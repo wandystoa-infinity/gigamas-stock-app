@@ -832,30 +832,62 @@ def laporan():
     transaksi_query = Transaksi.query.join(Barang).join(Cabang)
 
     if cabang_id:
-        transaksi_query = transaksi_query.filter(Transaksi.cabang_id == cabang_id)
+        transaksi_query = transaksi_query.filter(
+            Transaksi.cabang_id == cabang_id
+        )
     elif current_user.role != ROLE_SUPER_ADMIN:
-        transaksi_query = transaksi_query.filter(Transaksi.cabang_id == current_user.cabang_id)
+        transaksi_query = transaksi_query.filter(
+            Transaksi.cabang_id == current_user.cabang_id
+        )
 
+    # FILTER TANGGAL
     if tanggal_mulai:
-        transaksi_query = transaksi_query.filter(Transaksi.tanggal >= tanggal_mulai)
+        tanggal_mulai_obj = datetime.strptime(
+            tanggal_mulai,
+            "%Y-%m-%d"
+        )
+
+        transaksi_query = transaksi_query.filter(
+            Transaksi.tanggal >= tanggal_mulai_obj
+        )
 
     if tanggal_selesai:
-        transaksi_query = transaksi_query.filter(Transaksi.tanggal <= tanggal_selesai)
+        tanggal_selesai_obj = datetime.strptime(
+            tanggal_selesai,
+            "%Y-%m-%d"
+        )
 
-    transaksi_data = transaksi_query.order_by(Transaksi.tanggal.desc()).all()
+        tanggal_selesai_obj = tanggal_selesai_obj + timedelta(days=1)
+
+        transaksi_query = transaksi_query.filter(
+            Transaksi.tanggal < tanggal_selesai_obj
+        )
+
+    transaksi_data = transaksi_query.order_by(
+        Transaksi.tanggal.desc()
+    ).all()
 
     stock_query = StockCabang.query.join(Barang).join(Cabang)
 
     if cabang_id:
-        stock_query = stock_query.filter(StockCabang.cabang_id == cabang_id)
+        stock_query = stock_query.filter(
+            StockCabang.cabang_id == cabang_id
+        )
     elif current_user.role != ROLE_SUPER_ADMIN:
-        stock_query = stock_query.filter(StockCabang.cabang_id == current_user.cabang_id)
+        stock_query = stock_query.filter(
+            StockCabang.cabang_id == current_user.cabang_id
+        )
 
-    data_stock = stock_query.order_by(Barang.nama_barang.asc()).all()
+    data_stock = stock_query.order_by(
+        Barang.nama_barang.asc()
+    ).all()
 
     grafik_stok_cabang = db.session.query(
         Cabang.nama_cabang,
-        func.coalesce(func.sum(StockCabang.stock), 0).label("total_stock")
+        func.coalesce(
+            func.sum(StockCabang.stock),
+            0
+        ).label("total_stock")
     ).join(
         StockCabang,
         StockCabang.cabang_id == Cabang.id
@@ -872,7 +904,10 @@ def laporan():
     grafik_masuk_keluar = transaksi_query.with_entities(
         func.date(Transaksi.tanggal).label("tanggal"),
         Transaksi.jenis,
-        func.coalesce(func.sum(Transaksi.jumlah), 0).label("total")
+        func.coalesce(
+            func.sum(Transaksi.jumlah),
+            0
+        ).label("total")
     ).group_by(
         func.date(Transaksi.tanggal),
         Transaksi.jenis
@@ -884,7 +919,10 @@ def laporan():
         Transaksi.jenis == "keluar"
     ).with_entities(
         Barang.nama_barang,
-        func.coalesce(func.sum(Transaksi.jumlah), 0).label("total_keluar")
+        func.coalesce(
+            func.sum(Transaksi.jumlah),
+            0
+        ).label("total_keluar")
     ).group_by(
         Barang.nama_barang
     ).order_by(
@@ -892,7 +930,7 @@ def laporan():
     ).limit(10).all()
 
     stok_menipis = stock_query.filter(
-    StockCabang.stock <= Barang.stok_minimum
+        StockCabang.stock <= Barang.stok_minimum
     ).all()
 
     return render_template(
