@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: gigamas-stock-app
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    plan: free
+    envVars:
+      - key: SECRET_KEY
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: WHATSAPP_ACCESS_TOKEN
+        sync: false
+      - key: WHATSAPP_PHONE_NUMBER_ID
+        sync: false
+      - key: WHATSAPP_API_VERSION
+        value: v20.0
+      - key: BATAS_BARANG_KELUAR_BESAR
+        value: 100

@@ -1,0 +1,477 @@
+{% extends "base.html" %}
+
+{% block title %}User Management{% endblock %}
+
+{% block page_title %}User Management{% endblock %}
+
+{% block page_subtitle %}
+Kelola akun, role, cabang, dan penerima alert WhatsApp
+{% endblock %}
+
+{% block content %}
+
+<div class="card">
+
+    <div class="section-title">
+        Tambah User
+    </div>
+
+    <form method="POST" action="{{ url_for('tambah_user') }}">
+
+        <div class="grid-2">
+
+            <div class="form-group">
+                <label>Nama Lengkap</label>
+                <input type="text" name="nama_lengkap" required>
+            </div>
+
+            <div class="form-group">
+                <label>Username</label>
+                <input type="text" name="username" required autocomplete="off">
+            </div>
+
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" name="password" required>
+            </div>
+
+            <div class="form-group">
+                <label>Role</label>
+                <select name="role" required>
+                    <option value="">Pilih Role</option>
+                    <option value="super_admin">Super Admin</option>
+                    <option value="admin_cabang">Admin Cabang</option>
+                    <option value="operator_gudang">Operator Gudang</option>
+                    <option value="viewer">Viewer</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Cabang</label>
+                <select name="cabang_id">
+                    <option value="">Tidak Ada / Global</option>
+                    {% for cabang in cabang_list %}
+                    <option value="{{ cabang.id }}">
+                        {{ cabang.nama_cabang }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Nomor WhatsApp</label>
+                <input type="text" name="nomor_whatsapp" placeholder="628xxxxxxxxxx">
+            </div>
+
+            <div class="form-group">
+                <label>Terima Alert WhatsApp</label>
+                <label style="display:flex; align-items:center; gap:10px; font-weight:600;">
+                    <input type="checkbox" name="menerima_alert" style="width:auto;">
+                    Ya, user ini menerima alert
+                </label>
+            </div>
+
+        </div>
+
+        <button type="submit" class="btn btn-primary">
+            Simpan User
+        </button>
+
+    </form>
+
+</div>
+
+
+<div class="card">
+
+    <div
+        style="
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+            gap:15px;
+            flex-wrap:wrap;
+            margin-bottom:20px;
+        "
+    >
+        <div class="section-title">
+            Data User
+        </div>
+
+        <input
+            type="text"
+            id="searchUser"
+            placeholder="Cari user..."
+            style="max-width:260px;"
+        >
+    </div>
+
+    <div class="table-responsive">
+
+        <table id="tableUser">
+
+            <thead>
+                <tr>
+                    <th>No</th>
+                    <th>Nama</th>
+                    <th>Username</th>
+                    <th>Role</th>
+                    <th>Cabang</th>
+                    <th>WhatsApp</th>
+                    <th>Alert</th>
+                    <th>Status</th>
+                    <th>Aksi</th>
+                </tr>
+            </thead>
+
+            <tbody>
+
+                {% for user in data_user %}
+
+                <tr>
+                    <td>{{ loop.index }}</td>
+
+                    <td>
+                        <strong>{{ user.nama_lengkap }}</strong>
+                    </td>
+
+                    <td>{{ user.username }}</td>
+
+                    <td>
+                        {% if user.role == 'super_admin' %}
+                        <span class="badge badge-danger">Super Admin</span>
+                        {% elif user.role == 'admin_cabang' %}
+                        <span class="badge badge-warning">Admin Cabang</span>
+                        {% elif user.role == 'operator_gudang' %}
+                        <span class="badge badge-dark">Operator Gudang</span>
+                        {% else %}
+                        <span class="badge badge-success">Viewer</span>
+                        {% endif %}
+                    </td>
+
+                    <td>
+                        {% if user.cabang %}
+                            {{ user.cabang.nama_cabang }}
+                        {% else %}
+                            Global
+                        {% endif %}
+                    </td>
+
+                    <td>
+                        {{ user.nomor_whatsapp or '-' }}
+                    </td>
+
+                    <td>
+                        {% if user.menerima_alert %}
+                        <span class="badge badge-success">Ya</span>
+                        {% else %}
+                        <span class="badge badge-dark">Tidak</span>
+                        {% endif %}
+                    </td>
+
+                    <td>
+                        {% if user.status_aktif %}
+                        <span class="badge badge-success">Aktif</span>
+                        {% else %}
+                        <span class="badge badge-danger">Nonaktif</span>
+                        {% endif %}
+                    </td>
+
+                    <td>
+                        {% if user.id != current_user.id %}
+
+                        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+
+                            <button
+                                type="button"
+                                onclick="openEditUserModal{{ user.id }}()"
+                                style="
+                                    background:#2563eb;
+                                    color:white;
+                                    border:none;
+                                    padding:7px 10px;
+                                    border-radius:8px;
+                                    font-size:12px;
+                                    font-weight:700;
+                                    cursor:pointer;
+                                "
+                            >
+                                Edit
+                            </button>
+
+                            {% if user.status_aktif %}
+                            <a
+                                href="{{ url_for('nonaktif_user', id=user.id) }}"
+                                class="btn btn-danger"
+                                onclick="return confirm('Nonaktifkan user ini?')"
+                                style="padding:7px 10px; font-size:12px;"
+                            >
+                                Nonaktifkan
+                            </a>
+                            {% endif %}
+
+                            <a
+                                href="{{ url_for('delete_user', id=user.id) }}"
+                                onclick="return confirm('Yakin ingin menghapus user ini secara permanen?')"
+                                style="
+                                    background:#991b1b;
+                                    color:white;
+                                    padding:7px 10px;
+                                    border-radius:8px;
+                                    text-decoration:none;
+                                    font-size:12px;
+                                    font-weight:700;
+                                    display:inline-block;
+                                "
+                            >
+                                Hapus
+                            </a>
+
+                        </div>
+
+                        {% else %}
+                        -
+                        {% endif %}
+                    </td>
+                </tr>
+
+
+                <!-- MODAL EDIT USER -->
+                <div
+                    id="editUserModal{{ user.id }}"
+                    style="
+                        display:none;
+                        position:fixed;
+                        inset:0;
+                        background:rgba(0,0,0,0.45);
+                        z-index:9999;
+                        align-items:center;
+                        justify-content:center;
+                        padding:20px;
+                    "
+                >
+                    <div
+                        style="
+                            background:white;
+                            width:100%;
+                            max-width:760px;
+                            border-radius:18px;
+                            padding:24px;
+                            box-shadow:0 25px 60px rgba(0,0,0,0.25);
+                            max-height:90vh;
+                            overflow:auto;
+                        "
+                    >
+                        <div
+                            style="
+                                display:flex;
+                                justify-content:space-between;
+                                align-items:center;
+                                margin-bottom:20px;
+                            "
+                        >
+                            <h3 style="margin:0;">
+                                Edit User
+                            </h3>
+
+                            <button
+                                type="button"
+                                onclick="closeEditUserModal{{ user.id }}()"
+                                style="
+                                    background:none;
+                                    border:none;
+                                    font-size:28px;
+                                    cursor:pointer;
+                                    line-height:1;
+                                "
+                            >
+                                ×
+                            </button>
+                        </div>
+
+                        <form method="POST" action="{{ url_for('edit_user', id=user.id) }}">
+
+                            <div class="grid-2">
+
+                                <div class="form-group">
+                                    <label>Nama Lengkap</label>
+                                    <input
+                                        type="text"
+                                        name="nama_lengkap"
+                                        value="{{ user.nama_lengkap }}"
+                                        required
+                                    >
+                                </div>
+
+                                <div class="form-group">
+                                    <label>Username</label>
+                                    <input
+                                        type="text"
+                                        name="username"
+                                        value="{{ user.username }}"
+                                        required
+                                    >
+                                </div>
+
+                                <div class="form-group">
+                                    <label>Password Baru</label>
+                                    <input
+                                        type="password"
+                                        name="password"
+                                        placeholder="Kosongkan jika tidak diganti"
+                                    >
+                                </div>
+
+                                <div class="form-group">
+                                    <label>Role</label>
+                                    <select name="role" required>
+                                        <option value="super_admin" {% if user.role == 'super_admin' %}selected{% endif %}>
+                                            Super Admin
+                                        </option>
+                                        <option value="admin_cabang" {% if user.role == 'admin_cabang' %}selected{% endif %}>
+                                            Admin Cabang
+                                        </option>
+                                        <option value="operator_gudang" {% if user.role == 'operator_gudang' %}selected{% endif %}>
+                                            Operator Gudang
+                                        </option>
+                                        <option value="viewer" {% if user.role == 'viewer' %}selected{% endif %}>
+                                            Viewer
+                                        </option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group">
+                                    <label>Cabang</label>
+                                    <select name="cabang_id">
+                                        <option value="">Tidak Ada / Global</option>
+
+                                        {% for cabang in cabang_list %}
+                                        <option
+                                            value="{{ cabang.id }}"
+                                            {% if user.cabang_id == cabang.id %}selected{% endif %}
+                                        >
+                                            {{ cabang.nama_cabang }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+
+                                <div class="form-group">
+                                    <label>Nomor WhatsApp</label>
+                                    <input
+                                        type="text"
+                                        name="nomor_whatsapp"
+                                        value="{{ user.nomor_whatsapp or '' }}"
+                                        placeholder="628xxxxxxxxxx"
+                                    >
+                                </div>
+
+                                <div class="form-group">
+                                    <label>Terima Alert WhatsApp</label>
+
+                                    <label style="display:flex; align-items:center; gap:10px; font-weight:600;">
+                                        <input
+                                            type="checkbox"
+                                            name="menerima_alert"
+                                            style="width:auto;"
+                                            {% if user.menerima_alert %}checked{% endif %}
+                                        >
+                                        Ya, user ini menerima alert
+                                    </label>
+                                </div>
+
+                            </div>
+
+                            <div
+                                style="
+                                    display:flex;
+                                    gap:10px;
+                                    justify-content:flex-end;
+                                    margin-top:20px;
+                                    flex-wrap:wrap;
+                                "
+                            >
+                                <button
+                                    type="button"
+                                    onclick="closeEditUserModal{{ user.id }}()"
+                                    style="
+                                        background:#e5e7eb;
+                                        color:#111827;
+                                        border:none;
+                                        padding:10px 16px;
+                                        border-radius:10px;
+                                        font-weight:700;
+                                        cursor:pointer;
+                                    "
+                                >
+                                    Batal
+                                </button>
+
+                                <button
+                                    type="submit"
+                                    class="btn btn-primary"
+                                >
+                                    Simpan Perubahan
+                                </button>
+                            </div>
+
+                        </form>
+                    </div>
+                </div>
+
+                {% else %}
+
+                <tr>
+                    <td colspan="9" style="text-align:center;color:#6b7280;">
+                        Belum ada data user.
+                    </td>
+                </tr>
+
+                {% endfor %}
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+</div>
+
+{% endblock %}
+
+
+{% block extra_js %}
+
+<script>
+    document
+        .getElementById("searchUser")
+        .addEventListener("keyup", function () {
+
+            let value = this.value.toLowerCase()
+            let rows = document.querySelectorAll("#tableUser tbody tr")
+
+            rows.forEach(row => {
+
+                let text = row.innerText.toLowerCase()
+
+                row.style.display = text.includes(value)
+                    ? ""
+                    : "none"
+
+            })
+
+        })
+
+
+    {% for user in data_user %}
+    function openEditUserModal{{ user.id }}() {
+        document.getElementById("editUserModal{{ user.id }}").style.display = "flex"
+    }
+
+    function closeEditUserModal{{ user.id }}() {
+        document.getElementById("editUserModal{{ user.id }}").style.display = "none"
+    }
+    {% endfor %}
+</script>
+
+{% endblock %}

@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+
+{% block title %}Barang Masuk{% endblock %}
+
+{% block page_title %}Barang Masuk{% endblock %}
+
+{% block page_subtitle %}
+Input penerimaan barang dan update stok cabang
+{% endblock %}
+
+{% block content %}
+
+<div class="grid-2">
+
+    <div class="card">
+        <div class="section-title">Input Barang Masuk</div>
+
+        <form method="POST" action="{{ url_for('barang_masuk') }}">
+
+            {% if current_user.role == 'super_admin' %}
+            <div class="form-group">
+                <label>Cabang</label>
+                <select name="cabang_id" required>
+                    <option value="">Pilih Cabang</option>
+                    {% for cabang in cabang_list %}
+                    <option value="{{ cabang.id }}">{{ cabang.nama_cabang }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
+
+            <div class="form-group">
+                <label>Barang</label>
+                <select name="barang_id" required>
+                    <option value="">Pilih Barang</option>
+                    {% for barang in barang_list %}
+                    <option value="{{ barang.id }}">
+                        {{ barang.nama_barang }} - {{ barang.satuan }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Supplier</label>
+                <select name="supplier_id">
+                    <option value="">Tanpa Supplier</option>
+                    {% for supplier in supplier_list %}
+                    <option value="{{ supplier.id }}">
+                        {{ supplier.nama_supplier }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Jumlah Masuk</label>
+                <input type="number" name="jumlah" min="1" required>
+            </div>
+
+            <div class="form-group">
+                <label>Keterangan</label>
+                <textarea name="keterangan" rows="4" placeholder="Contoh: pembelian, retur, tambahan stok..."></textarea>
+            </div>
+
+            <button type="submit" class="btn btn-primary">
+                Simpan Barang Masuk
+            </button>
+
+        </form>
+    </div>
+
+
+    <div class="card">
+        <div class="section-title">Panduan</div>
+
+        <p class="text-muted" style="line-height:1.7;">
+            Gunakan halaman ini untuk mencatat barang yang masuk ke gudang atau cabang.
+            Setelah disimpan, stok cabang akan otomatis bertambah.
+        </p>
+
+        <br>
+
+        <table>
+            <tr>
+                <td>Super Admin</td>
+                <td><span class="badge badge-success">Bisa pilih semua cabang</span></td>
+            </tr>
+            <tr>
+                <td>Admin Cabang</td>
+                <td><span class="badge badge-warning">Cabang sendiri</span></td>
+            </tr>
+            <tr>
+                <td>Operator Gudang</td>
+                <td><span class="badge badge-warning">Cabang sendiri</span></td>
+            </tr>
+            <tr>
+                <td>Viewer</td>
+                <td><span class="badge badge-danger">Tidak bisa input</span></td>
+            </tr>
+        </table>
+    </div>
+
+</div>
+
+
+<div class="card">
+
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:15px; flex-wrap:wrap; margin-bottom:20px;">
+        <div class="section-title">Riwayat Barang Masuk</div>
+
+        <input
+            type="text"
+            id="searchMasuk"
+            placeholder="Cari riwayat..."
+            style="max-width:260px;"
+        >
+    </div>
+
+    <div class="table-responsive">
+        <table id="tableMasuk">
+            <thead>
+                <tr>
+                    <th>No</th>
+                    <th>Tanggal</th>
+                    <th>Cabang</th>
+                    <th>Barang</th>
+                    <th>Supplier</th>
+                    <th>Jumlah</th>
+                    <th>Operator</th>
+                    <th>Keterangan</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for trx in transaksi_masuk %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+
+                    <td>{{ trx.tanggal.strftime('%d-%m-%Y %H:%M') }}</td>
+
+                    <td>
+                        <strong>{{ trx.cabang.nama_cabang }}</strong>
+                    </td>
+
+                    <td>{{ trx.barang.nama_barang }}</td>
+
+                    <td>
+                        {% if trx.supplier %}
+                            {{ trx.supplier.nama_supplier }}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+
+                    <td>
+                        <span class="badge badge-success">
+                            + {{ trx.jumlah }} {{ trx.barang.satuan }}
+                        </span>
+                    </td>
+
+                    <td>{{ trx.user.nama_lengkap }}</td>
+
+                    <td>
+                        {% if trx.keterangan %}
+                            {{ trx.keterangan }}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="8" style="text-align:center; color:#6b7280;">
+                        Belum ada transaksi barang masuk.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+</div>
+
+{% endblock %}
+
+
+{% block extra_js %}
+
+<script>
+    document
+        .getElementById("searchMasuk")
+        .addEventListener("keyup", function () {
+            let value = this.value.toLowerCase()
+            let rows = document.querySelectorAll("#tableMasuk tbody tr")
+
+            rows.forEach(row => {
+                let text = row.innerText.toLowerCase()
+                row.style.display = text.includes(value) ? "" : "none"
+            })
+        })
+</script>
+
+{% endblock %}

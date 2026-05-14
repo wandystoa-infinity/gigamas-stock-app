@@ -1,0 +1,405 @@
+{% extends "base.html" %}
+
+{% block title %}Barang Keluar{% endblock %}
+
+{% block page_title %}
+Barang Keluar
+{% endblock %}
+
+{% block page_subtitle %}
+Pengeluaran barang dan monitoring stok realtime
+{% endblock %}
+
+{% block content %}
+
+<div class="grid-2">
+
+    <!-- FORM -->
+    <div class="card">
+
+        <div class="section-title">
+            Input Barang Keluar
+        </div>
+
+        <form
+            method="POST"
+            action="{{ url_for('barang_keluar') }}"
+        >
+
+            {% if current_user.role == 'super_admin' %}
+            <div class="form-group">
+
+                <label>
+                    Cabang
+                </label>
+
+                <select
+                    name="cabang_id"
+                    required
+                >
+
+                    <option value="">
+                        Pilih Cabang
+                    </option>
+
+                    {% for cabang in cabang_list %}
+                    <option value="{{ cabang.id }}">
+                        {{ cabang.nama_cabang }}
+                    </option>
+                    {% endfor %}
+
+                </select>
+
+            </div>
+            {% endif %}
+
+
+            <div class="form-group">
+
+                <label>
+                    Barang
+                </label>
+
+                <select
+                    name="barang_id"
+                    required
+                >
+
+                    <option value="">
+                        Pilih Barang
+                    </option>
+
+                    {% for barang in barang_list %}
+                    <option value="{{ barang.id }}">
+                        {{ barang.nama_barang }} - {{ barang.satuan }}
+                    </option>
+                    {% endfor %}
+
+                </select>
+
+            </div>
+
+
+            <div class="form-group">
+
+                <label>
+                    Jumlah Keluar
+                </label>
+
+                <input
+                    type="number"
+                    name="jumlah"
+                    min="1"
+                    required
+                >
+
+            </div>
+
+
+            <div class="form-group">
+
+                <label>
+                    Keterangan
+                </label>
+
+                <textarea
+                    name="keterangan"
+                    rows="4"
+                    placeholder="Contoh: penjualan, distribusi, bantuan, dll..."
+                ></textarea>
+
+            </div>
+
+
+            <button
+                type="submit"
+                class="btn btn-primary"
+            >
+                Simpan Barang Keluar
+            </button>
+
+        </form>
+
+    </div>
+
+
+    <!-- ALERT -->
+    <div class="card">
+
+        <div class="section-title">
+            Monitoring Sistem
+        </div>
+
+        <div
+            style="
+                display:flex;
+                flex-direction:column;
+                gap:15px;
+            "
+        >
+
+            <div
+                style="
+                    background:#fff7ed;
+                    padding:15px;
+                    border-radius:16px;
+                    border:1px solid #fed7aa;
+                "
+            >
+
+                <h4
+                    style="
+                        color:#c2410c;
+                        margin-bottom:6px;
+                    "
+                >
+                    ⚠ Alert Stok Minimum
+                </h4>
+
+                <p
+                    style="
+                        color:#7c2d12;
+                        font-size:14px;
+                        line-height:1.6;
+                    "
+                >
+                    Sistem otomatis mengirim alert WhatsApp
+                    jika stok berada di bawah batas minimum.
+                </p>
+
+            </div>
+
+
+            <div
+                style="
+                    background:#fef2f2;
+                    padding:15px;
+                    border-radius:16px;
+                    border:1px solid #fecaca;
+                "
+            >
+
+                <h4
+                    style="
+                        color:#991b1b;
+                        margin-bottom:6px;
+                    "
+                >
+                    🚨 Alert Stok Kritis
+                </h4>
+
+                <p
+                    style="
+                        color:#7f1d1d;
+                        font-size:14px;
+                        line-height:1.6;
+                    "
+                >
+                    Jika stok mencapai level kritis,
+                    sistem akan membuat alert prioritas tinggi.
+                </p>
+
+            </div>
+
+
+            <div
+                style="
+                    background:#eff6ff;
+                    padding:15px;
+                    border-radius:16px;
+                    border:1px solid #bfdbfe;
+                "
+            >
+
+                <h4
+                    style="
+                        color:#1d4ed8;
+                        margin-bottom:6px;
+                    "
+                >
+                    📦 Barang Keluar Besar
+                </h4>
+
+                <p
+                    style="
+                        color:#1e3a8a;
+                        font-size:14px;
+                        line-height:1.6;
+                    "
+                >
+                    Transaksi besar otomatis dicatat
+                    untuk audit dan monitoring manajemen.
+                </p>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+
+<!-- RIWAYAT -->
+<div class="card">
+
+    <div
+        style="
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+            gap:15px;
+            flex-wrap:wrap;
+            margin-bottom:20px;
+        "
+    >
+
+        <div class="section-title">
+            Riwayat Barang Keluar
+        </div>
+
+        <input
+            type="text"
+            id="searchKeluar"
+            placeholder="Cari transaksi..."
+            style="max-width:260px;"
+        >
+
+    </div>
+
+
+    <div class="table-responsive">
+
+        <table id="tableKeluar">
+
+            <thead>
+
+                <tr>
+
+                    <th>No</th>
+                    <th>Tanggal</th>
+                    <th>Cabang</th>
+                    <th>Barang</th>
+                    <th>Jumlah</th>
+                    <th>Operator</th>
+                    <th>Keterangan</th>
+
+                </tr>
+
+            </thead>
+
+
+            <tbody>
+
+                {% for trx in transaksi_keluar %}
+
+                <tr>
+
+                    <td>
+                        {{ loop.index }}
+                    </td>
+
+                    <td>
+                        {{ trx.tanggal.strftime('%d-%m-%Y %H:%M') }}
+                    </td>
+
+                    <td>
+                        <strong>
+                            {{ trx.cabang.nama_cabang }}
+                        </strong>
+                    </td>
+
+                    <td>
+                        {{ trx.barang.nama_barang }}
+                    </td>
+
+                    <td>
+
+                        <span class="badge badge-danger">
+                            - {{ trx.jumlah }} {{ trx.barang.satuan }}
+                        </span>
+
+                    </td>
+
+                    <td>
+                        {{ trx.user.nama_lengkap }}
+                    </td>
+
+                    <td>
+
+                        {% if trx.keterangan %}
+                            {{ trx.keterangan }}
+                        {% else %}
+                            -
+                        {% endif %}
+
+                    </td>
+
+                </tr>
+
+                {% else %}
+
+                <tr>
+
+                    <td
+                        colspan="7"
+                        style="
+                            text-align:center;
+                            color:#6b7280;
+                        "
+                    >
+                        Belum ada transaksi barang keluar.
+                    </td>
+
+                </tr>
+
+                {% endfor %}
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+</div>
+
+{% endblock %}
+
+
+
+{% block extra_js %}
+
+<script>
+
+    document
+        .getElementById("searchKeluar")
+        .addEventListener(
+            "keyup",
+            function(){
+
+                let value = this.value.toLowerCase()
+
+                let rows = document.querySelectorAll(
+                    "#tableKeluar tbody tr"
+                )
+
+                rows.forEach(row => {
+
+                    let text = row.innerText.toLowerCase()
+
+                    if(text.includes(value)){
+                        row.style.display = ""
+                    }
+                    else{
+                        row.style.display = "none"
+                    }
+
+                })
+
+            }
+        )
+
+</script>
+
+{% endblock %}

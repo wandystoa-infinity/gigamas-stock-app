@@ -1,0 +1,539 @@
+{% extends "base.html" %}
+
+{% block title %}Master Barang{% endblock %}
+
+{% block page_title %}
+Master Barang
+{% endblock %}
+
+{% block page_subtitle %}
+Data barang Gigamas seluruh cabang
+{% endblock %}
+
+{% block content %}
+
+<!-- FORM TAMBAH BARANG -->
+{% if current_user.role == 'super_admin' %}
+
+<div class="card">
+
+    <div class="section-title">
+        Tambah Barang
+    </div>
+
+    <form
+        method="POST"
+        action="{{ url_for('tambah_barang') }}"
+    >
+
+        <div class="grid-2">
+
+            <div class="form-group">
+
+                <label>
+                    Nama Barang
+                </label>
+
+                <input
+                    type="text"
+                    name="nama_barang"
+                    required
+                >
+
+            </div>
+
+
+            <div class="form-group">
+
+                <label>
+                    Kategori
+                </label>
+
+                <input
+                    type="text"
+                    name="kategori"
+                    required
+                >
+
+            </div>
+
+
+            <div class="form-group">
+
+                <label>
+                    Satuan
+                </label>
+
+                <input
+                    type="text"
+                    name="satuan"
+                    placeholder="Kg / Sak / Dus"
+                    required
+                >
+
+            </div>
+
+
+            <div class="form-group">
+
+                <label>
+                    Stock Minimum
+                </label>
+
+                <input
+                    type="number"
+                    name="stok_minimum"
+                    value="10"
+                    required
+                >
+
+            </div>
+
+
+            <div class="form-group">
+
+                <label>
+                    Stock Kritis
+                </label>
+
+                <input
+                    type="number"
+                    name="stok_kritis"
+                    value="5"
+                    required
+                >
+
+            </div>
+
+        </div>
+
+        <button
+            type="submit"
+            class="btn btn-primary"
+        >
+            Simpan Barang
+        </button>
+
+    </form>
+
+</div>
+
+{% endif %}
+
+
+
+<!-- TABEL BARANG -->
+<div class="card">
+
+    <div
+        style="
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+            margin-bottom:20px;
+            gap:15px;
+            flex-wrap:wrap;
+        "
+    >
+
+        <div class="section-title">
+            Data Master Barang
+        </div>
+
+        <input
+            type="text"
+            id="searchBarang"
+            placeholder="Cari barang..."
+            style="
+                max-width:260px;
+            "
+        >
+
+    </div>
+
+
+    <div class="table-responsive">
+
+        <table id="tableBarang">
+
+            <thead>
+
+                <tr>
+
+                    <th>No</th>
+                    <th>Nama Barang</th>
+                    <th>Kategori</th>
+                    <th>Satuan</th>
+                    <th>Stock Minimum</th>
+                    <th>Stock Kritis</th>
+                    <th>Status</th>
+
+                    {% if current_user.role == 'super_admin' %}
+                    <th>Aksi</th>
+                    {% endif %}
+
+                </tr>
+
+            </thead>
+
+
+            <tbody>
+
+                {% for barang in data_barang %}
+
+                <tr>
+
+                    <td>
+                        {{ loop.index }}
+                    </td>
+
+                    <td>
+                        <strong>
+                            {{ barang.nama_barang }}
+                        </strong>
+                    </td>
+
+                    <td>
+                        {{ barang.kategori }}
+                    </td>
+
+                    <td>
+                        {{ barang.satuan }}
+                    </td>
+
+                    <td>
+
+                        {% if barang.stok_minimum <= 10 %}
+                        <span class="badge badge-warning">
+                            {{ barang.stok_minimum }}
+                        </span>
+                        {% else %}
+                        {{ barang.stok_minimum }}
+                        {% endif %}
+
+                    </td>
+
+                    <td>
+
+                        {% if barang.stok_kritis <= 5 %}
+                        <span class="badge badge-danger">
+                            {{ barang.stok_kritis }}
+                        </span>
+                        {% else %}
+                        {{ barang.stok_kritis }}
+                        {% endif %}
+
+                    </td>
+
+                    <td>
+
+                        {% if barang.is_active %}
+                        <span class="badge badge-success">
+                            Aktif
+                        </span>
+                        {% else %}
+                        <span class="badge badge-danger">
+                            Nonaktif
+                        </span>
+                        {% endif %}
+
+                    </td>
+
+
+                    {% if current_user.role == 'super_admin' %}
+                    <td>
+
+                        <div
+                            style="
+                                display:flex;
+                                gap:8px;
+                                flex-wrap:wrap;
+                            "
+                        >
+
+                            <button
+                                class="btn btn-light"
+                                onclick="openEditModal(
+                                    '{{ barang.id }}',
+                                    '{{ barang.nama_barang }}',
+                                    '{{ barang.kategori }}',
+                                    '{{ barang.satuan }}',
+                                    '{{ barang.stok_minimum }}',
+                                    '{{ barang.stok_kritis }}'
+                                )"
+                            >
+                                Edit
+                            </button>
+
+                            <a
+                                href="{{ url_for('hapus_barang', id=barang.id) }}"
+                                class="btn btn-danger"
+                                onclick="return confirm('Nonaktifkan barang ini?')"
+                            >
+                                Hapus
+                            </a>
+
+                        </div>
+
+                    </td>
+                    {% endif %}
+
+                </tr>
+
+                {% endfor %}
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+</div>
+
+
+
+<!-- MODAL EDIT -->
+<div
+    id="editModal"
+    style="
+        display:none;
+        position:fixed;
+        top:0;
+        left:0;
+        right:0;
+        bottom:0;
+        background:rgba(0,0,0,.5);
+        z-index:999;
+        align-items:center;
+        justify-content:center;
+        padding:20px;
+    "
+>
+
+    <div
+        class="card"
+        style="
+            width:100%;
+            max-width:600px;
+            margin-bottom:0;
+        "
+    >
+
+        <div
+            style="
+                display:flex;
+                justify-content:space-between;
+                align-items:center;
+                margin-bottom:20px;
+            "
+        >
+
+            <div class="section-title">
+                Edit Barang
+            </div>
+
+            <button
+                onclick="closeEditModal()"
+                class="btn btn-danger"
+            >
+                X
+            </button>
+
+        </div>
+
+
+        <form
+            method="POST"
+            id="editForm"
+        >
+
+            <div class="grid-2">
+
+                <div class="form-group">
+
+                    <label>
+                        Nama Barang
+                    </label>
+
+                    <input
+                        type="text"
+                        name="nama_barang"
+                        id="editNamaBarang"
+                        required
+                    >
+
+                </div>
+
+
+                <div class="form-group">
+
+                    <label>
+                        Kategori
+                    </label>
+
+                    <input
+                        type="text"
+                        name="kategori"
+                        id="editKategori"
+                        required
+                    >
+
+                </div>
+
+
+                <div class="form-group">
+
+                    <label>
+                        Satuan
+                    </label>
+
+                    <input
+                        type="text"
+                        name="satuan"
+                        id="editSatuan"
+                        required
+                    >
+
+                </div>
+
+
+                <div class="form-group">
+
+                    <label>
+                        Stock Minimum
+                    </label>
+
+                    <input
+                        type="number"
+                        name="stok_minimum"
+                        id="editStokMinimum"
+                        required
+                    >
+
+                </div>
+
+
+                <div class="form-group">
+
+                    <label>
+                        Stock Kritis
+                    </label>
+
+                    <input
+                        type="number"
+                        name="stok_kritis"
+                        id="editStokKritis"
+                        required
+                    >
+
+                </div>
+
+            </div>
+
+
+            <button
+                type="submit"
+                class="btn btn-primary"
+            >
+                Update Barang
+            </button>
+
+        </form>
+
+    </div>
+
+</div>
+
+{% endblock %}
+
+
+
+{% block extra_js %}
+
+<script>
+
+    // =========================================
+    // SEARCH TABLE
+    // =========================================
+    document
+        .getElementById("searchBarang")
+        .addEventListener(
+            "keyup",
+            function() {
+
+                let value = this.value.toLowerCase()
+
+                let rows = document.querySelectorAll(
+                    "#tableBarang tbody tr"
+                )
+
+                rows.forEach(row => {
+
+                    let text = row.innerText.toLowerCase()
+
+                    if(text.includes(value)){
+                        row.style.display = ""
+                    }
+                    else{
+                        row.style.display = "none"
+                    }
+
+                })
+
+            }
+        )
+
+
+    // =========================================
+    // MODAL EDIT
+    // =========================================
+    function openEditModal(
+        id,
+        nama,
+        kategori,
+        satuan,
+        stokMinimum,
+        stokKritis
+    ){
+
+        document
+            .getElementById("editModal")
+            .style.display = "flex"
+
+        document
+            .getElementById("editNamaBarang")
+            .value = nama
+
+        document
+            .getElementById("editKategori")
+            .value = kategori
+
+        document
+            .getElementById("editSatuan")
+            .value = satuan
+
+        document
+            .getElementById("editStokMinimum")
+            .value = stokMinimum
+
+        document
+            .getElementById("editStokKritis")
+            .value = stokKritis
+
+        document
+            .getElementById("editForm")
+            .action = "/barang/edit/" + id
+    }
+
+
+    function closeEditModal(){
+
+        document
+            .getElementById("editModal")
+            .style.display = "none"
+
+    }
+
+</script>
+
+{% endblock %}

@@ -1,0 +1,485 @@
+{% extends "base.html" %}
+
+{% block title %}Cabang{% endblock %}
+
+{% block page_title %}
+Manajemen Cabang
+{% endblock %}
+
+{% block page_subtitle %}
+Pengaturan cabang dan distribusi stock Gigamas
+{% endblock %}
+
+{% block content %}
+
+<!-- FORM TAMBAH CABANG -->
+<div class="card">
+
+    <div class="section-title">
+        Tambah Cabang
+    </div>
+
+    <form
+        method="POST"
+        action="{{ url_for('tambah_cabang') }}"
+    >
+
+        <div class="grid-2">
+
+            <div class="form-group">
+
+                <label>
+                    Nama Cabang
+                </label>
+
+                <input
+                    type="text"
+                    name="nama_cabang"
+                    required
+                >
+
+            </div>
+
+
+            <div class="form-group">
+
+                <label>
+                    Kontak Cabang
+                </label>
+
+                <input
+                    type="text"
+                    name="kontak"
+                    placeholder="08xxxxxxxxxx"
+                >
+
+            </div>
+
+
+            <div
+                class="form-group"
+                style="grid-column:1/-1;"
+            >
+
+                <label>
+                    Alamat Cabang
+                </label>
+
+                <textarea
+                    name="alamat"
+                    rows="4"
+                ></textarea>
+
+            </div>
+
+        </div>
+
+
+        <button
+            type="submit"
+            class="btn btn-primary"
+        >
+            Simpan Cabang
+        </button>
+
+    </form>
+
+</div>
+
+
+
+<!-- CARD SUMMARY -->
+<div class="grid-3">
+
+    <div class="stat-card">
+
+        <div class="stat-label">
+            Total Cabang
+        </div>
+
+        <div class="stat-value">
+            {{ data_cabang|length }}
+        </div>
+
+        <div class="stat-note">
+            Cabang terdaftar
+        </div>
+
+    </div>
+
+
+    <div class="stat-card">
+
+        <div class="stat-label">
+            Cabang Aktif
+        </div>
+
+        <div class="stat-value">
+
+            {{
+                data_cabang
+                | selectattr('is_active')
+                | list
+                | length
+            }}
+
+        </div>
+
+        <div class="stat-note">
+            Cabang beroperasi
+        </div>
+
+    </div>
+
+
+    <div class="stat-card">
+
+        <div class="stat-label">
+            Sistem Multi Cabang
+        </div>
+
+        <div class="stat-value">
+            ERP
+        </div>
+
+        <div class="stat-note">
+            Monitoring realtime
+        </div>
+
+    </div>
+
+</div>
+
+
+
+<!-- TABEL -->
+<div class="card">
+
+    <div
+        style="
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+            gap:15px;
+            flex-wrap:wrap;
+            margin-bottom:20px;
+        "
+    >
+
+        <div class="section-title">
+            Data Cabang
+        </div>
+
+        <input
+            type="text"
+            id="searchCabang"
+            placeholder="Cari cabang..."
+            style="max-width:260px;"
+        >
+
+    </div>
+
+
+    <div class="table-responsive">
+
+        <table id="tableCabang">
+
+            <thead>
+
+                <tr>
+
+                    <th>No</th>
+                    <th>Nama Cabang</th>
+                    <th>Kontak</th>
+                    <th>Alamat</th>
+                    <th>Status</th>
+                    <th>Aksi</th>
+
+                </tr>
+
+            </thead>
+
+
+            <tbody>
+
+                {% for cabang in data_cabang %}
+
+                <tr>
+
+                    <td>
+                        {{ loop.index }}
+                    </td>
+
+                    <td>
+
+                        <strong>
+                            {{ cabang.nama_cabang }}
+                        </strong>
+
+                    </td>
+
+                    <td>
+                        {{ cabang.kontak or '-' }}
+                    </td>
+
+                    <td>
+                        {{ cabang.alamat or '-' }}
+                    </td>
+
+                    <td>
+
+                        {% if cabang.is_active %}
+                        <span class="badge badge-success">
+                            Aktif
+                        </span>
+                        {% else %}
+                        <span class="badge badge-danger">
+                            Nonaktif
+                        </span>
+                        {% endif %}
+
+                    </td>
+
+
+                    <td>
+
+                        <div
+                            style="
+                                display:flex;
+                                gap:8px;
+                                flex-wrap:wrap;
+                            "
+                        >
+
+                            <button
+                                class="btn btn-light"
+                                onclick="openEditModal(
+                                    '{{ cabang.id }}',
+                                    `{{ cabang.nama_cabang }}`,
+                                    `{{ cabang.kontak or '' }}`,
+                                    `{{ cabang.alamat or '' }}`
+                                )"
+                            >
+                                Edit
+                            </button>
+
+
+                            <a
+                                href="{{ url_for('hapus_cabang', id=cabang.id) }}"
+                                class="btn btn-danger"
+                                onclick="return confirm('Nonaktifkan cabang ini?')"
+                            >
+                                Hapus
+                            </a>
+
+                        </div>
+
+                    </td>
+
+                </tr>
+
+                {% endfor %}
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+</div>
+
+
+
+<!-- MODAL EDIT -->
+<div
+    id="editModal"
+    style="
+        display:none;
+        position:fixed;
+        top:0;
+        left:0;
+        right:0;
+        bottom:0;
+        background:rgba(0,0,0,.5);
+        z-index:999;
+        align-items:center;
+        justify-content:center;
+        padding:20px;
+    "
+>
+
+    <div
+        class="card"
+        style="
+            width:100%;
+            max-width:600px;
+            margin-bottom:0;
+        "
+    >
+
+        <div
+            style="
+                display:flex;
+                justify-content:space-between;
+                align-items:center;
+                margin-bottom:20px;
+            "
+        >
+
+            <div class="section-title">
+                Edit Cabang
+            </div>
+
+            <button
+                class="btn btn-danger"
+                onclick="closeEditModal()"
+            >
+                X
+            </button>
+
+        </div>
+
+
+        <form
+            method="POST"
+            id="editForm"
+        >
+
+            <div class="form-group">
+
+                <label>
+                    Nama Cabang
+                </label>
+
+                <input
+                    type="text"
+                    name="nama_cabang"
+                    id="editNamaCabang"
+                    required
+                >
+
+            </div>
+
+
+            <div class="form-group">
+
+                <label>
+                    Kontak
+                </label>
+
+                <input
+                    type="text"
+                    name="kontak"
+                    id="editKontak"
+                >
+
+            </div>
+
+
+            <div class="form-group">
+
+                <label>
+                    Alamat
+                </label>
+
+                <textarea
+                    name="alamat"
+                    id="editAlamat"
+                    rows="4"
+                ></textarea>
+
+            </div>
+
+
+            <button
+                type="submit"
+                class="btn btn-primary"
+            >
+                Update Cabang
+            </button>
+
+        </form>
+
+    </div>
+
+</div>
+
+{% endblock %}
+
+
+
+{% block extra_js %}
+
+<script>
+
+    // SEARCH
+    document
+        .getElementById("searchCabang")
+        .addEventListener(
+            "keyup",
+            function(){
+
+                let value = this.value.toLowerCase()
+
+                let rows = document.querySelectorAll(
+                    "#tableCabang tbody tr"
+                )
+
+                rows.forEach(row => {
+
+                    let text = row.innerText.toLowerCase()
+
+                    if(text.includes(value)){
+                        row.style.display = ""
+                    }
+                    else{
+                        row.style.display = "none"
+                    }
+
+                })
+
+            }
+        )
+
+
+    // MODAL EDIT
+    function openEditModal(
+        id,
+        nama,
+        kontak,
+        alamat
+    ){
+
+        document
+            .getElementById("editModal")
+            .style.display = "flex"
+
+        document
+            .getElementById("editNamaCabang")
+            .value = nama
+
+        document
+            .getElementById("editKontak")
+            .value = kontak
+
+        document
+            .getElementById("editAlamat")
+            .value = alamat
+
+        document
+            .getElementById("editForm")
+            .action = "/cabang/edit/" + id
+    }
+
+
+    function closeEditModal(){
+
+        document
+            .getElementById("editModal")
+            .style.display = "none"
+
+    }
+
+</script>
+
+{% endblock %}

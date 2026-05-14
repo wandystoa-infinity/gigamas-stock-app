@@ -1,0 +1,369 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard Gigamas{% endblock %}
+
+{% block page_title %}Dashboard{% endblock %}
+
+{% block page_subtitle %}
+GIGAMAS - Gizi Generasi Emas
+{% endblock %}
+
+{% block content %}
+
+<style>
+    .chart-container {
+        position: relative;
+        width: 100%;
+        height: 320px;
+    }
+
+    .chart-container canvas {
+        width: 100% !important;
+        height: 100% !important;
+    }
+
+    @media (max-width: 768px) {
+        .chart-container {
+            height: 260px;
+        }
+    }
+</style>
+
+<div class="card" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:10px;">
+    <div>
+        <h2 style="margin-bottom:5px;">Monitoring Realtime Gigamas</h2>
+        <p style="font-size:28px; color:#f97316; font-weight:700;">
+            Gizi Generasi Emas
+        </p>
+    </div>
+
+    <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+        {% if current_user.role == 'super_admin' %}
+        <a href="{{ url_for('kirim_pending_whatsapp') }}" style="background:#16a34a; color:white; padding:12px 18px; border-radius:12px; text-decoration:none; font-weight:800; display:inline-block; box-shadow:0 8px 18px rgba(22,163,74,0.25);">
+            📲 Kirim Pending WhatsApp
+        </a>
+        {% endif %}
+
+        <div id="jamRealtime" style="font-size:28px; font-weight:800; color:var(--orange);">
+            --
+        </div>
+    </div>
+</div>
+
+{% if current_user.role == 'super_admin' %}
+<div class="card">
+    <form method="GET">
+        <div class="grid-3">
+            <div class="form-group">
+                <label>Pilih Cabang</label>
+                <select name="cabang_id" onchange="this.form.submit()">
+                    <option value="">Semua Cabang</option>
+                    {% for cabang in cabang_list %}
+                    <option value="{{ cabang.id }}" {% if selected_cabang_id == cabang.id %}selected{% endif %}>
+                        {{ cabang.nama_cabang }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+    </form>
+</div>
+{% endif %}
+
+<div class="grid-4">
+    <div class="stat-card">
+        <div class="stat-label">Total Barang</div>
+        <div class="stat-value">{{ total_barang }}</div>
+        <div class="stat-note">Master barang aktif</div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-label">Total Stock</div>
+        <div class="stat-value">{{ total_stock }}</div>
+        <div class="stat-note">Seluruh stock cabang</div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-label">Barang Masuk Hari Ini</div>
+        <div class="stat-value">{{ barang_masuk_hari_ini }}</div>
+        <div class="stat-note">Total transaksi masuk</div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-label">Barang Keluar Hari Ini</div>
+        <div class="stat-value">{{ barang_keluar_hari_ini }}</div>
+        <div class="stat-note">Total transaksi keluar</div>
+    </div>
+</div>
+
+{% if stok_menipis > 0 %}
+<div class="card" style="border-left: 5px solid #dc2626;">
+    <h3 style="margin-bottom:10px;color:#dc2626;">
+        ⚠ Alert Stock Menipis
+    </h3>
+    <p>
+        Ada <strong>{{ stok_menipis }}</strong> barang dengan stock minimum.
+    </p>
+</div>
+{% endif %}
+
+<div class="grid-2">
+    <div class="card">
+        <div class="section-title">Grafik Barang Masuk & Keluar</div>
+        <div class="chart-container">
+            <canvas id="chartTransaksi"></canvas>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="section-title">Stock Per Cabang</div>
+        <div class="chart-container">
+            <canvas id="chartCabang"></canvas>
+        </div>
+    </div>
+</div>
+
+<div class="grid-2">
+    <div class="card">
+        <div class="section-title">Barang Paling Banyak Keluar</div>
+        <div class="chart-container">
+            <canvas id="chartBarangKeluar"></canvas>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="section-title">Ringkasan Sistem</div>
+
+        <table>
+            <tr>
+                <td>Total Barang</td>
+                <td><strong>{{ total_barang }}</strong></td>
+            </tr>
+            <tr>
+                <td>Total Stock</td>
+                <td><strong>{{ total_stock }}</strong></td>
+            </tr>
+            <tr>
+                <td>Barang Masuk Hari Ini</td>
+                <td><strong>{{ barang_masuk_hari_ini }}</strong></td>
+            </tr>
+            <tr>
+                <td>Barang Keluar Hari Ini</td>
+                <td><strong>{{ barang_keluar_hari_ini }}</strong></td>
+            </tr>
+            <tr>
+                <td>Stock Menipis</td>
+                <td>
+                    {% if stok_menipis > 0 %}
+                    <span class="badge badge-danger">{{ stok_menipis }}</span>
+                    {% else %}
+                    <span class="badge badge-success">Aman</span>
+                    {% endif %}
+                </td>
+            </tr>
+        </table>
+    </div>
+</div>
+
+<div class="card">
+    <div class="section-title">Riwayat Transaksi Terbaru</div>
+
+    <div class="table-responsive">
+        <table>
+            <thead>
+                <tr>
+                    <th>Tanggal</th>
+                    <th>Cabang</th>
+                    <th>Barang</th>
+                    <th>Jenis</th>
+                    <th>Jumlah</th>
+                    <th>Operator</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for trx in transaksi_terbaru %}
+                <tr>
+                    <td>{{ trx.tanggal.strftime('%d-%m-%Y %H:%M') }}</td>
+                    <td>{{ trx.cabang.nama_cabang }}</td>
+                    <td>{{ trx.barang.nama_barang }}</td>
+                    <td>
+                        {% if trx.jenis == 'masuk' %}
+                        <span class="badge badge-success">MASUK</span>
+                        {% else %}
+                        <span class="badge badge-danger">KELUAR</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ trx.jumlah }}</td>
+                    <td>{{ trx.user.nama_lengkap }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" style="text-align:center;color:#6b7280;">
+                        Belum ada transaksi terbaru.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+
+<script>
+    Chart.defaults.font.family = "'Segoe UI', sans-serif";
+    Chart.defaults.color = "#374151";
+
+    const green = "#16a34a";
+    const red = "#dc2626";
+    const dark = "#111827";
+    const softGreen = "rgba(22, 163, 74, 0.15)";
+    const softRed = "rgba(220, 38, 38, 0.15)";
+
+    const warnaItem = [
+        "#f97316", "#16a34a", "#2563eb", "#dc2626",
+        "#9333ea", "#0891b2", "#ca8a04", "#db2777",
+        "#111827", "#65a30d", "#7c3aed", "#ea580c"
+    ];
+
+    function warnaBeda(labels) {
+        return labels.map((_, index) => warnaItem[index % warnaItem.length]);
+    }
+
+    fetch("/api/dashboard/chart")
+        .then(response => response.json())
+        .then(data => {
+            const labels = data.map(item => item.tanggal);
+            const masuk = data.map(item => item.masuk);
+            const keluar = data.map(item => item.keluar);
+
+            new Chart(document.getElementById("chartTransaksi"), {
+                type: "line",
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: "Barang Masuk",
+                            data: masuk,
+                            borderColor: green,
+                            backgroundColor: softGreen,
+                            borderWidth: 3,
+                            tension: 0.4,
+                            fill: true
+                        },
+                        {
+                            label: "Barang Keluar",
+                            data: keluar,
+                            borderColor: red,
+                            backgroundColor: softRed,
+                            borderWidth: 3,
+                            tension: 0.4,
+                            fill: true
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: "bottom" },
+                        tooltip: { backgroundColor: dark, padding: 12, cornerRadius: 10 }
+                    },
+                    scales: {
+                        y: { beginAtZero: true },
+                        x: { grid: { display: false } }
+                    }
+                }
+            });
+        });
+
+    const labelCabang = [
+        {% for item in stok_per_cabang %}
+            "{{ item[0] }}",
+        {% endfor %}
+    ];
+
+    new Chart(document.getElementById("chartCabang"), {
+        type: "bar",
+        data: {
+            labels: labelCabang,
+            datasets: [{
+                label: "Total Stock",
+                data: [
+                    {% for item in stok_per_cabang %}
+                        {{ item[1] }},
+                    {% endfor %}
+                ],
+                backgroundColor: warnaBeda(labelCabang),
+                borderColor: warnaBeda(labelCabang),
+                borderWidth: 1,
+                borderRadius: 12,
+                maxBarThickness: 60
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: { backgroundColor: dark, padding: 12, cornerRadius: 10 }
+            },
+            scales: {
+                y: { beginAtZero: true },
+                x: { grid: { display: false } }
+            }
+        }
+    });
+
+    const labelBarangKeluar = [
+        {% for item in top_barang_keluar %}
+            "{{ item[0] }}",
+        {% endfor %}
+    ];
+
+    new Chart(document.getElementById("chartBarangKeluar"), {
+        type: "doughnut",
+        data: {
+            labels: labelBarangKeluar,
+            datasets: [{
+                data: [
+                    {% for item in top_barang_keluar %}
+                        {{ item[1] }},
+                    {% endfor %}
+                ],
+                backgroundColor: warnaBeda(labelBarangKeluar),
+                borderWidth: 3,
+                borderColor: "#ffffff",
+                hoverOffset: 8
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: "62%",
+            plugins: {
+                legend: { position: "bottom" },
+                tooltip: { backgroundColor: dark, padding: 12, cornerRadius: 10 }
+            }
+        }
+    });
+
+    function updateJam() {
+        const sekarang = new Date();
+        document.getElementById("jamRealtime").innerHTML =
+            sekarang.toLocaleTimeString("id-ID");
+    }
+
+    setInterval(updateJam, 1000);
+    updateJam();
+
+    setInterval(() => {
+        window.location.reload();
+    }, 30000);
+</script>
+
+
+{% endblock %}

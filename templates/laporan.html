@@ -1,0 +1,386 @@
+{% extends "base.html" %}
+
+{% block title %}Laporan{% endblock %}
+
+{% block page_title %}Laporan Gigamas{% endblock %}
+
+{% block page_subtitle %}
+Laporan transaksi, stok, grafik, dan alert stok
+{% endblock %}
+
+{% block content %}
+
+<style>
+    .chart-container {
+        position: relative;
+        width: 100%;
+        height: 320px;
+    }
+
+    .chart-container canvas {
+        width: 100% !important;
+        height: 100% !important;
+    }
+
+    @media (max-width: 768px) {
+        .chart-container {
+            height: 260px;
+        }
+    }
+</style>
+
+<div class="card">
+    <div class="section-title">Filter Laporan</div>
+
+    <form method="GET">
+        <div class="grid-3">
+            {% if current_user.role == 'super_admin' %}
+            <div class="form-group">
+                <label>Cabang</label>
+                <select name="cabang_id">
+                    <option value="">Semua Cabang</option>
+                    {% for cabang in cabang_list %}
+                    <option value="{{ cabang.id }}" {% if selected_cabang_id == cabang.id %}selected{% endif %}>
+                        {{ cabang.nama_cabang }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
+
+            <div class="form-group">
+                <label>Tanggal Mulai</label>
+                <input type="date" name="tanggal_mulai" value="{{ tanggal_mulai or '' }}">
+            </div>
+
+            <div class="form-group">
+                <label>Tanggal Selesai</label>
+                <input type="date" name="tanggal_selesai" value="{{ tanggal_selesai or '' }}">
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary">
+            Tampilkan Laporan
+        </button>
+    </form>
+</div>
+
+<div class="grid-3">
+    <div class="stat-card">
+        <div class="stat-label">Total Transaksi</div>
+        <div class="stat-value">{{ transaksi_data|length }}</div>
+        <div class="stat-note">Sesuai filter laporan</div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-label">Total Item Stok</div>
+        <div class="stat-value">{{ data_stock|length }}</div>
+        <div class="stat-note">Barang tercatat di cabang</div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-label">Stok Menipis</div>
+        <div class="stat-value">{{ stok_menipis|length }}</div>
+        <div class="stat-note">Perlu perhatian</div>
+    </div>
+</div>
+
+<div class="grid-2">
+    <div class="card">
+        <div class="section-title">Grafik Stok Per Cabang</div>
+        <div class="chart-container">
+            <canvas id="chartStokCabang"></canvas>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="section-title">Grafik Barang Terbanyak Keluar</div>
+        <div class="chart-container">
+            <canvas id="chartBarangTerlaris"></canvas>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="section-title">Grafik Barang Masuk vs Keluar</div>
+    <div class="chart-container">
+        <canvas id="chartMasukKeluar"></canvas>
+    </div>
+</div>
+
+<div class="card">
+    <div class="section-title">Daftar Stok Saat Ini</div>
+
+    <div class="table-responsive">
+        <table>
+            <thead>
+                <tr>
+                    <th>No</th>
+                    <th>Cabang</th>
+                    <th>Barang</th>
+                    <th>Stok</th>
+                    <th>Minimum</th>
+                    <th>Kritis</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for stock in data_stock %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td>{{ stock.cabang.nama_cabang }}</td>
+                    <td><strong>{{ stock.barang.nama_barang }}</strong></td>
+                    <td>{{ stock.stock }} {{ stock.barang.satuan }}</td>
+                    <td>{{ stock.barang.stok_minimum }}</td>
+                    <td>{{ stock.barang.stok_kritis }}</td>
+                    <td>
+                        {% if stock.stock <= stock.barang.stok_kritis %}
+                        <span class="badge badge-danger">Kritis</span>
+                        {% elif stock.stock <= stock.barang.stok_minimum %}
+                        <span class="badge badge-warning">Menipis</span>
+                        {% else %}
+                        <span class="badge badge-success">Aman</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="7" style="text-align:center;color:#6b7280;">
+                        Belum ada data stok.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card">
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:15px; flex-wrap:wrap; margin-bottom:20px;">
+        <div class="section-title" style="margin-bottom:0;">
+            Riwayat Transaksi
+        </div>
+
+        <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+            <a href="{{ url_for('export_excel') }}" style="background:#16a34a; color:white; padding:12px 20px; border-radius:12px; text-decoration:none; font-weight:700; display:inline-block; box-shadow:0 8px 18px rgba(22,163,74,0.25);">
+                📥 Export Excel
+            </a>
+
+            <a href="{{ url_for('export_pdf') }}" style="background:#dc2626; color:white; padding:12px 20px; border-radius:12px; text-decoration:none; font-weight:700; display:inline-block; box-shadow:0 8px 18px rgba(220,38,38,0.25);">
+                📄 Export PDF
+            </a>
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        <table>
+            <thead>
+                <tr>
+                    <th>No</th>
+                    <th>Tanggal</th>
+                    <th>Cabang</th>
+                    <th>Barang</th>
+                    <th>Jenis</th>
+                    <th>Jumlah</th>
+                    <th>Operator</th>
+                    <th>Keterangan</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for trx in transaksi_data %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td>{{ trx.tanggal.strftime('%d-%m-%Y %H:%M') }}</td>
+                    <td>{{ trx.cabang.nama_cabang }}</td>
+                    <td>{{ trx.barang.nama_barang }}</td>
+                    <td>
+                        {% if trx.jenis == 'masuk' %}
+                        <span class="badge badge-success">Masuk</span>
+                        {% else %}
+                        <span class="badge badge-danger">Keluar</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ trx.jumlah }} {{ trx.barang.satuan }}</td>
+                    <td>{{ trx.user.nama_lengkap }}</td>
+                    <td>{{ trx.keterangan or '-' }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="8" style="text-align:center;color:#6b7280;">
+                        Belum ada transaksi.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+
+<script>
+    Chart.defaults.font.family = "'Segoe UI', sans-serif";
+    Chart.defaults.color = "#374151";
+
+    const green = "#16a34a";
+    const red = "#dc2626";
+    const dark = "#111827";
+    const softGreen = "rgba(22, 163, 74, 0.15)";
+    const softRed = "rgba(220, 38, 38, 0.15)";
+
+    const warnaItem = [
+        "#f97316", "#16a34a", "#2563eb", "#dc2626",
+        "#9333ea", "#0891b2", "#ca8a04", "#db2777",
+        "#111827", "#65a30d", "#7c3aed", "#ea580c"
+    ];
+
+    function warnaBeda(labels) {
+        return labels.map((_, index) => warnaItem[index % warnaItem.length]);
+    }
+
+    const labelCabang = [
+        {% for item in grafik_stok_cabang %}
+            "{{ item[0] }}",
+        {% endfor %}
+    ];
+
+    new Chart(document.getElementById("chartStokCabang"), {
+        type: "bar",
+        data: {
+            labels: labelCabang,
+            datasets: [{
+                label: "Total Stok",
+                data: [
+                    {% for item in grafik_stok_cabang %}
+                        {{ item[1] }},
+                    {% endfor %}
+                ],
+                backgroundColor: warnaBeda(labelCabang),
+                borderColor: warnaBeda(labelCabang),
+                borderWidth: 1,
+                borderRadius: 12,
+                maxBarThickness: 60
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: { backgroundColor: dark, padding: 12, cornerRadius: 10 }
+            },
+            scales: {
+                y: { beginAtZero: true },
+                x: { grid: { display: false } }
+            }
+        }
+    });
+
+    const labelBarang = [
+        {% for item in grafik_barang_terlaris %}
+            "{{ item[0] }}",
+        {% endfor %}
+    ];
+
+    new Chart(document.getElementById("chartBarangTerlaris"), {
+        type: "doughnut",
+        data: {
+            labels: labelBarang,
+            datasets: [{
+                data: [
+                    {% for item in grafik_barang_terlaris %}
+                        {{ item[1] }},
+                    {% endfor %}
+                ],
+                backgroundColor: warnaBeda(labelBarang),
+                borderWidth: 3,
+                borderColor: "#ffffff",
+                hoverOffset: 8
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: "62%",
+            plugins: {
+                legend: { position: "bottom" },
+                tooltip: { backgroundColor: dark, padding: 12, cornerRadius: 10 }
+            }
+        }
+    });
+
+    const transaksiRaw = [
+        {% for item in grafik_masuk_keluar %}
+        {
+            tanggal: "{{ item.tanggal }}",
+            jenis: "{{ item.jenis }}",
+            total: {{ item.total }}
+        },
+        {% endfor %}
+    ];
+
+    const grouped = {};
+
+    transaksiRaw.forEach(item => {
+        if (!grouped[item.tanggal]) {
+            grouped[item.tanggal] = {
+                tanggal: item.tanggal,
+                masuk: 0,
+                keluar: 0
+            };
+        }
+
+        grouped[item.tanggal][item.jenis] = item.total;
+    });
+
+    const transaksiData = Object.values(grouped);
+
+    new Chart(document.getElementById("chartMasukKeluar"), {
+        type: "line",
+        data: {
+            labels: transaksiData.map(item => item.tanggal),
+            datasets: [
+                {
+                    label: "Barang Masuk",
+                    data: transaksiData.map(item => item.masuk),
+                    borderColor: green,
+                    backgroundColor: softGreen,
+                    borderWidth: 3,
+                    tension: 0.4,
+                    fill: true
+                },
+                {
+                    label: "Barang Keluar",
+                    data: transaksiData.map(item => item.keluar),
+                    borderColor: red,
+                    backgroundColor: softRed,
+                    borderWidth: 3,
+                    tension: 0.4,
+                    fill: true
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                mode: "index",
+                intersect: false
+            },
+            plugins: {
+                legend: { position: "bottom" },
+                tooltip: { backgroundColor: dark, padding: 12, cornerRadius: 10 }
+            },
+            scales: {
+                y: { beginAtZero: true },
+                x: { grid: { display: false } }
+            }
+        }
+    });
+</script>
+
+{% endblock %}

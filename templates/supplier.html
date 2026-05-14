@@ -1,0 +1,424 @@
+{% extends "base.html" %}
+
+{% block title %}Supplier{% endblock %}
+
+{% block page_title %}
+Supplier
+{% endblock %}
+
+{% block page_subtitle %}
+Manajemen supplier dan mitra pemasok Gigamas
+{% endblock %}
+
+{% block content %}
+
+{% if current_user.role == 'super_admin' %}
+
+<div class="card">
+
+    <div class="section-title">
+        Tambah Supplier
+    </div>
+
+    <form
+        method="POST"
+        action="{{ url_for('tambah_supplier') }}"
+    >
+
+        <div class="grid-2">
+
+            <div class="form-group">
+
+                <label>
+                    Nama Supplier
+                </label>
+
+                <input
+                    type="text"
+                    name="nama_supplier"
+                    required
+                >
+
+            </div>
+
+
+            <div class="form-group">
+
+                <label>
+                    Kontak
+                </label>
+
+                <input
+                    type="text"
+                    name="kontak"
+                    placeholder="08xxxxxxxxxx"
+                >
+
+            </div>
+
+
+            <div class="form-group" style="grid-column:1/-1;">
+
+                <label>
+                    Alamat
+                </label>
+
+                <textarea
+                    name="alamat"
+                    rows="4"
+                ></textarea>
+
+            </div>
+
+        </div>
+
+
+        <button
+            type="submit"
+            class="btn btn-primary"
+        >
+            Simpan Supplier
+        </button>
+
+    </form>
+
+</div>
+
+{% endif %}
+
+
+
+<!-- TABEL -->
+<div class="card">
+
+    <div
+        style="
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+            gap:15px;
+            flex-wrap:wrap;
+            margin-bottom:20px;
+        "
+    >
+
+        <div class="section-title">
+            Data Supplier
+        </div>
+
+        <input
+            type="text"
+            id="searchSupplier"
+            placeholder="Cari supplier..."
+            style="max-width:260px;"
+        >
+
+    </div>
+
+
+    <div class="table-responsive">
+
+        <table id="tableSupplier">
+
+            <thead>
+
+                <tr>
+
+                    <th>No</th>
+                    <th>Nama Supplier</th>
+                    <th>Kontak</th>
+                    <th>Alamat</th>
+                    <th>Status</th>
+
+                    {% if current_user.role == 'super_admin' %}
+                    <th>Aksi</th>
+                    {% endif %}
+
+                </tr>
+
+            </thead>
+
+
+            <tbody>
+
+                {% for supplier in data_supplier %}
+
+                <tr>
+
+                    <td>
+                        {{ loop.index }}
+                    </td>
+
+                    <td>
+                        <strong>
+                            {{ supplier.nama_supplier }}
+                        </strong>
+                    </td>
+
+                    <td>
+                        {{ supplier.kontak or '-' }}
+                    </td>
+
+                    <td>
+                        {{ supplier.alamat or '-' }}
+                    </td>
+
+                    <td>
+
+                        {% if supplier.is_active %}
+                        <span class="badge badge-success">
+                            Aktif
+                        </span>
+                        {% else %}
+                        <span class="badge badge-danger">
+                            Nonaktif
+                        </span>
+                        {% endif %}
+
+                    </td>
+
+
+                    {% if current_user.role == 'super_admin' %}
+                    <td>
+
+                        <div
+                            style="
+                                display:flex;
+                                gap:8px;
+                                flex-wrap:wrap;
+                            "
+                        >
+
+                            <button
+                                class="btn btn-light"
+                                onclick="openEditModal(
+                                    '{{ supplier.id }}',
+                                    `{{ supplier.nama_supplier }}`,
+                                    `{{ supplier.kontak or '' }}`,
+                                    `{{ supplier.alamat or '' }}`
+                                )"
+                            >
+                                Edit
+                            </button>
+
+
+                            <a
+                                href="{{ url_for('hapus_supplier', id=supplier.id) }}"
+                                class="btn btn-danger"
+                                onclick="return confirm('Nonaktifkan supplier ini?')"
+                            >
+                                Hapus
+                            </a>
+
+                        </div>
+
+                    </td>
+                    {% endif %}
+
+                </tr>
+
+                {% endfor %}
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+</div>
+
+
+
+<!-- MODAL EDIT -->
+<div
+    id="editModal"
+    style="
+        display:none;
+        position:fixed;
+        top:0;
+        left:0;
+        right:0;
+        bottom:0;
+        background:rgba(0,0,0,.5);
+        z-index:999;
+        align-items:center;
+        justify-content:center;
+        padding:20px;
+    "
+>
+
+    <div
+        class="card"
+        style="
+            width:100%;
+            max-width:600px;
+            margin-bottom:0;
+        "
+    >
+
+        <div
+            style="
+                display:flex;
+                justify-content:space-between;
+                align-items:center;
+                margin-bottom:20px;
+            "
+        >
+
+            <div class="section-title">
+                Edit Supplier
+            </div>
+
+            <button
+                class="btn btn-danger"
+                onclick="closeEditModal()"
+            >
+                X
+            </button>
+
+        </div>
+
+
+        <form
+            method="POST"
+            id="editForm"
+        >
+
+            <div class="form-group">
+
+                <label>
+                    Nama Supplier
+                </label>
+
+                <input
+                    type="text"
+                    name="nama_supplier"
+                    id="editNamaSupplier"
+                    required
+                >
+
+            </div>
+
+
+            <div class="form-group">
+
+                <label>
+                    Kontak
+                </label>
+
+                <input
+                    type="text"
+                    name="kontak"
+                    id="editKontak"
+                >
+
+            </div>
+
+
+            <div class="form-group">
+
+                <label>
+                    Alamat
+                </label>
+
+                <textarea
+                    name="alamat"
+                    id="editAlamat"
+                    rows="4"
+                ></textarea>
+
+            </div>
+
+
+            <button
+                type="submit"
+                class="btn btn-primary"
+            >
+                Update Supplier
+            </button>
+
+        </form>
+
+    </div>
+
+</div>
+
+{% endblock %}
+
+
+
+{% block extra_js %}
+
+<script>
+
+    // SEARCH
+    document
+        .getElementById("searchSupplier")
+        .addEventListener(
+            "keyup",
+            function(){
+
+                let value = this.value.toLowerCase()
+
+                let rows = document.querySelectorAll(
+                    "#tableSupplier tbody tr"
+                )
+
+                rows.forEach(row => {
+
+                    let text = row.innerText.toLowerCase()
+
+                    if(text.includes(value)){
+                        row.style.display = ""
+                    }
+                    else{
+                        row.style.display = "none"
+                    }
+
+                })
+
+            }
+        )
+
+
+    // EDIT MODAL
+    function openEditModal(
+        id,
+        nama,
+        kontak,
+        alamat
+    ){
+
+        document
+            .getElementById("editModal")
+            .style.display = "flex"
+
+        document
+            .getElementById("editNamaSupplier")
+            .value = nama
+
+        document
+            .getElementById("editKontak")
+            .value = kontak
+
+        document
+            .getElementById("editAlamat")
+            .value = alamat
+
+        document
+            .getElementById("editForm")
+            .action = "/supplier/edit/" + id
+    }
+
+
+    function closeEditModal(){
+
+        document
+            .getElementById("editModal")
+            .style.display = "none"
+
+    }
+
+</script>
+
+{% endblock %}
