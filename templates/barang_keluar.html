@@ -24,6 +24,7 @@ Pengeluaran barang dan monitoring stok realtime
         <form
             method="POST"
             action="{{ url_for('barang_keluar') }}"
+            onsubmit="return cleanBarangKeluarForm(this)"
         >
 
             {% if current_user.role == 'super_admin' %}
@@ -49,6 +50,20 @@ Pengeluaran barang dan monitoring stok realtime
                     {% endfor %}
 
                 </select>
+
+            </div>
+            {% else %}
+            <div class="form-group">
+
+                <label>
+                    Cabang
+                </label>
+
+                <input
+                    type="text"
+                    value="{{ current_user.cabang.nama_cabang if current_user.cabang else 'Cabang belum terhubung' }}"
+                    readonly
+                >
 
             </div>
             {% endif %}
@@ -90,6 +105,9 @@ Pengeluaran barang dan monitoring stok realtime
                     type="number"
                     name="jumlah"
                     min="1"
+                    step="1"
+                    inputmode="numeric"
+                    placeholder="Masukkan jumlah barang keluar"
                     required
                 >
 
@@ -105,6 +123,7 @@ Pengeluaran barang dan monitoring stok realtime
                 <textarea
                     name="keterangan"
                     rows="4"
+                    maxlength="255"
                     placeholder="Contoh: penjualan, distribusi, bantuan, dll..."
                 ></textarea>
 
@@ -233,6 +252,37 @@ Pengeluaran barang dan monitoring stok realtime
 
             </div>
 
+
+            <div
+                style="
+                    background:#f8fafc;
+                    padding:15px;
+                    border-radius:16px;
+                    border:1px solid #e5e7eb;
+                "
+            >
+
+                <h4
+                    style="
+                        color:#111827;
+                        margin-bottom:6px;
+                    "
+                >
+                    ✅ Validasi Stok
+                </h4>
+
+                <p
+                    style="
+                        color:#374151;
+                        font-size:14px;
+                        line-height:1.6;
+                    "
+                >
+                    Sistem menolak transaksi jika jumlah keluar lebih besar dari stok tersedia.
+                </p>
+
+            </div>
+
         </div>
 
     </div>
@@ -263,6 +313,7 @@ Pengeluaran barang dan monitoring stok realtime
             type="text"
             id="searchKeluar"
             placeholder="Cari transaksi..."
+            autocomplete="off"
             style="max-width:260px;"
         >
 
@@ -301,29 +352,29 @@ Pengeluaran barang dan monitoring stok realtime
                     </td>
 
                     <td>
-                        {{ trx.tanggal.strftime('%d-%m-%Y %H:%M') }}
+                        {{ trx.tanggal.strftime('%d-%m-%Y %H:%M') if trx.tanggal else '-' }}
                     </td>
 
                     <td>
                         <strong>
-                            {{ trx.cabang.nama_cabang }}
+                            {{ trx.cabang.nama_cabang if trx.cabang else '-' }}
                         </strong>
                     </td>
 
                     <td>
-                        {{ trx.barang.nama_barang }}
+                        {{ trx.barang.nama_barang if trx.barang else '-' }}
                     </td>
 
                     <td>
 
                         <span class="badge badge-danger">
-                            - {{ trx.jumlah }} {{ trx.barang.satuan }}
+                            - {{ trx.jumlah }} {{ trx.barang.satuan if trx.barang else '' }}
                         </span>
 
                     </td>
 
                     <td>
-                        {{ trx.user.nama_lengkap }}
+                        {{ trx.user.nama_lengkap if trx.user else '-' }}
                     </td>
 
                     <td>
@@ -347,6 +398,7 @@ Pengeluaran barang dan monitoring stok realtime
                         style="
                             text-align:center;
                             color:#6b7280;
+                            padding:25px;
                         "
                     >
                         Belum ada transaksi barang keluar.
@@ -372,9 +424,57 @@ Pengeluaran barang dan monitoring stok realtime
 
 <script>
 
-    document
-        .getElementById("searchKeluar")
-        .addEventListener(
+    // =========================================
+    // CLEAN FORM BARANG KELUAR
+    // =========================================
+    function cleanBarangKeluarForm(form) {
+
+        const jumlah = form.querySelector('[name="jumlah"]')
+        const keterangan = form.querySelector('[name="keterangan"]')
+        const barang = form.querySelector('[name="barang_id"]')
+        const cabang = form.querySelector('[name="cabang_id"]')
+
+        if (keterangan) {
+            keterangan.value = keterangan.value.trim().replace(/\s+/g, " ")
+        }
+
+        if (cabang && !cabang.value) {
+            alert("Cabang wajib dipilih.")
+            cabang.focus()
+            return false
+        }
+
+        if (!barang.value) {
+            alert("Barang wajib dipilih.")
+            barang.focus()
+            return false
+        }
+
+        if (!jumlah.value || Number(jumlah.value) <= 0) {
+            alert("Jumlah barang keluar harus lebih dari 0.")
+            jumlah.focus()
+            return false
+        }
+
+        if (!Number.isInteger(Number(jumlah.value))) {
+            alert("Jumlah barang keluar harus berupa angka bulat.")
+            jumlah.focus()
+            return false
+        }
+
+        return confirm(
+            "Pastikan jumlah barang keluar sudah benar. Simpan transaksi?"
+        )
+    }
+
+
+    // =========================================
+    // SEARCH TABLE
+    // =========================================
+    const searchKeluar = document.getElementById("searchKeluar")
+
+    if (searchKeluar) {
+        searchKeluar.addEventListener(
             "keyup",
             function(){
 
@@ -399,6 +499,7 @@ Pengeluaran barang dan monitoring stok realtime
 
             }
         )
+    }
 
 </script>
 

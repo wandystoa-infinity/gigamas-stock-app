@@ -26,6 +26,10 @@ from datetime import datetime, date, timedelta
 import os
 import json
 import requests
+import re
+from dotenv import load_dotenv
+
+load_dotenv()
 
 from config import Config
 from io import BytesIO
@@ -166,15 +170,101 @@ def user_can_access_cabang(cabang_id):
 
     return current_user.cabang_id == cabang_id
 
+# =========================================================
+# HELPER VALIDASI & SANITASI INPUT
+# =========================================================
+def clean_text(value):
+    """
+    Membersihkan input text:
+    - mengubah None menjadi string kosong
+    - trim spasi depan/belakang
+    - menghapus spasi berlebihan
+    - menghapus karakter HTML sederhana
+    """
+    if value is None:
+        return ""
+
+    value = str(value).strip()
+    value = re.sub(r"\s+", " ", value)
+    value = value.replace("<", "").replace(">", "")
+    value = value.replace(";", "")
+    return value
+
+
+def clean_number(value, default=0):
+    """
+    Mengubah input angka menjadi integer.
+    Jika kosong / tidak valid, kembalikan default.
+    """
+    try:
+        if value is None or value == "":
+            return default
+        return int(value)
+    except (ValueError, TypeError):
+        return default
+
+
+def validate_required(value, field_name):
+    if value is None or value == "":
+        flash(f"{field_name} wajib diisi.", "danger")
+        return False
+    return True
+
+
+def validate_positive_number(value, field_name, allow_zero=False):
+    if allow_zero:
+        if value < 0:
+            flash(f"{field_name} tidak boleh minus.", "danger")
+            return False
+    else:
+        if value <= 0:
+            flash(f"{field_name} harus lebih dari 0.", "danger")
+            return False
+
+    return True
+
+
+def validate_cabang_required(cabang_id):
+    if not cabang_id or cabang_id <= 0:
+        flash("Cabang wajib dipilih.", "danger")
+        return False
+    return True
+
+
+def normalize_whatsapp_number(nomor):
+    nomor = clean_text(nomor)
+
+    if not nomor:
+        return None
+
+    nomor = nomor.replace(" ", "").replace("-", "").replace("+", "")
+
+    if nomor.startswith("0"):
+        nomor = "62" + nomor[1:]
+
+    return nomor
+
+
+def duplicate_exists(model, column, value, exclude_id=None):
+    query = model.query.filter(func.lower(column) == value.lower())
+
+    if exclude_id:
+        query = query.filter(model.id != exclude_id)
+
+    return query.first() is not None
+
+
 
 # =========================================================
 # WHATSAPP ALERT HELPER
 # =========================================================
 def kirim_whatsapp_asli(nomor_tujuan, pesan):
 
-    access_token = os.getenv("WHATSAPP_ACCESS_TOKEN")
+    access_token = os.getenv("WHATSAPP_TOKEN")
     phone_number_id = os.getenv("WHATSAPP_PHONE_NUMBER_ID")
     api_version = os.getenv("WHATSAPP_API_VERSION", "v20.0")
+
+    
 
     url = f"https://graph.facebook.com/{api_version}/{phone_number_id}/messages"
 
@@ -186,7 +276,7 @@ def kirim_whatsapp_asli(nomor_tujuan, pesan):
     payload = {
         "messaging_product": "whatsapp",
         "to": nomor_tujuan,
-        "type": "text",
+        "type": "template",
         "text": {
             "body": pesan
         }
@@ -272,7 +362,7 @@ def cek_alert_stok(stock_data):
 
     if barang.stok_kritis is not None and stock_data.stock <= barang.stok_kritis:
         pesan = (
-            f"🚨 ALERT STOK KRITIS GIGAMAS\n\n"
+            f"🚨 PERINGATAN STOK KRITIS GIGAMAS\n\n"
             f"Cabang: {cabang.nama_cabang}\n"
             f"Barang: {barang.nama_barang}\n"
             f"Stok Saat Ini: {stock_data.stock} {barang.satuan}\n"
@@ -289,7 +379,7 @@ def cek_alert_stok(stock_data):
 
     elif barang.stok_minimum is not None and stock_data.stock <= barang.stok_minimum:
         pesan = (
-            f"⚠️ ALERT STOK MENIPIS GIGAMAS\n\n"
+            f"⚠️ PERINGATAN STOK MENIPIS GIGAMAS\n\n"
             f"Cabang: {cabang.nama_cabang}\n"
             f"Barang: {barang.nama_barang}\n"
             f"Stok Saat Ini: {stock_data.stock} {barang.satuan}\n"
@@ -310,7 +400,7 @@ def cek_alert_barang_keluar_besar(transaksi):
 
     if transaksi.jenis == "keluar" and transaksi.jumlah >= batas_besar:
         pesan = (
-            f"📦 ALERT BARANG KELUAR BESAR GIGAMAS\n\n"
+            f"📦 WARNING BARANG KELUAR BESAR GIGAMAS\n\n"
             f"Cabang: {transaksi.cabang.nama_cabang}\n"
             f"Barang: {transaksi.barang.nama_barang}\n"
             f"Jumlah Keluar: {transaksi.jumlah} {transaksi.barang.satuan}\n"
@@ -346,7 +436,7 @@ def login():
         return redirect(url_for("dashboard"))
 
     if request.method == "POST":
-        username = request.form.get("username")
+        username = clean_text(request.form.get("username"))
         password = request.form.get("password")
 
         user = User.query.filter_by(username=username).first()
@@ -501,11 +591,31 @@ def barang():
 @login_required
 @role_required(ROLE_SUPER_ADMIN)
 def tambah_barang():
-    nama_barang = request.form.get("nama_barang")
-    kategori = request.form.get("kategori")
-    satuan = request.form.get("satuan")
-    stok_minimum = request.form.get("stok_minimum", type=int) or 0
-    stok_kritis = request.form.get("stok_kritis", type=int) or 0
+    nama_barang = clean_text(request.form.get("nama_barang"))
+    kategori = clean_text(request.form.get("kategori"))
+    satuan = clean_text(request.form.get("satuan"))
+    stok_minimum = clean_number(request.form.get("stok_minimum"), 0)
+    stok_kritis = clean_number(request.form.get("stok_kritis"), 0)
+
+    if not validate_required(nama_barang, "Nama barang"):
+        return redirect(url_for("barang"))
+
+    if not validate_required(satuan, "Satuan"):
+        return redirect(url_for("barang"))
+
+    if not validate_positive_number(stok_minimum, "Stok minimum", allow_zero=True):
+        return redirect(url_for("barang"))
+
+    if not validate_positive_number(stok_kritis, "Stok kritis", allow_zero=True):
+        return redirect(url_for("barang"))
+
+    if stok_kritis > stok_minimum and stok_minimum > 0:
+        flash("Stok kritis tidak boleh lebih besar dari stok minimum.", "danger")
+        return redirect(url_for("barang"))
+
+    if duplicate_exists(Barang, Barang.nama_barang, nama_barang):
+        flash("Nama barang sudah terdaftar.", "danger")
+        return redirect(url_for("barang"))
 
     barang_baru = Barang(
         nama_barang=nama_barang,
@@ -529,11 +639,37 @@ def tambah_barang():
 def edit_barang(id):
     barang_data = Barang.query.get_or_404(id)
 
-    barang_data.nama_barang = request.form.get("nama_barang")
-    barang_data.kategori = request.form.get("kategori")
-    barang_data.satuan = request.form.get("satuan")
-    barang_data.stok_minimum = request.form.get("stok_minimum", type=int) or 0
-    barang_data.stok_kritis = request.form.get("stok_kritis", type=int) or 0
+    nama_barang = clean_text(request.form.get("nama_barang"))
+    kategori = clean_text(request.form.get("kategori"))
+    satuan = clean_text(request.form.get("satuan"))
+    stok_minimum = clean_number(request.form.get("stok_minimum"), 0)
+    stok_kritis = clean_number(request.form.get("stok_kritis"), 0)
+
+    if not validate_required(nama_barang, "Nama barang"):
+        return redirect(url_for("barang"))
+
+    if not validate_required(satuan, "Satuan"):
+        return redirect(url_for("barang"))
+
+    if not validate_positive_number(stok_minimum, "Stok minimum", allow_zero=True):
+        return redirect(url_for("barang"))
+
+    if not validate_positive_number(stok_kritis, "Stok kritis", allow_zero=True):
+        return redirect(url_for("barang"))
+
+    if stok_kritis > stok_minimum and stok_minimum > 0:
+        flash("Stok kritis tidak boleh lebih besar dari stok minimum.", "danger")
+        return redirect(url_for("barang"))
+
+    if duplicate_exists(Barang, Barang.nama_barang, nama_barang, exclude_id=id):
+        flash("Nama barang sudah digunakan oleh data lain.", "danger")
+        return redirect(url_for("barang"))
+
+    barang_data.nama_barang = nama_barang
+    barang_data.kategori = kategori
+    barang_data.satuan = satuan
+    barang_data.stok_minimum = stok_minimum
+    barang_data.stok_kritis = stok_kritis
 
     db.session.commit()
 
@@ -567,10 +703,21 @@ def supplier():
 @login_required
 @role_required(ROLE_SUPER_ADMIN)
 def tambah_supplier():
+    nama_supplier = clean_text(request.form.get("nama_supplier"))
+    kontak = clean_text(request.form.get("kontak"))
+    alamat = clean_text(request.form.get("alamat"))
+
+    if not validate_required(nama_supplier, "Nama supplier"):
+        return redirect(url_for("supplier"))
+
+    if duplicate_exists(Supplier, Supplier.nama_supplier, nama_supplier):
+        flash("Nama supplier sudah terdaftar.", "danger")
+        return redirect(url_for("supplier"))
+
     supplier_baru = Supplier(
-        nama_supplier=request.form.get("nama_supplier"),
-        kontak=request.form.get("kontak"),
-        alamat=request.form.get("alamat"),
+        nama_supplier=nama_supplier,
+        kontak=kontak,
+        alamat=alamat,
         is_active=True
     )
 
@@ -587,9 +734,20 @@ def tambah_supplier():
 def edit_supplier(id):
     supplier_data = Supplier.query.get_or_404(id)
 
-    supplier_data.nama_supplier = request.form.get("nama_supplier")
-    supplier_data.kontak = request.form.get("kontak")
-    supplier_data.alamat = request.form.get("alamat")
+    nama_supplier = clean_text(request.form.get("nama_supplier"))
+    kontak = clean_text(request.form.get("kontak"))
+    alamat = clean_text(request.form.get("alamat"))
+
+    if not validate_required(nama_supplier, "Nama supplier"):
+        return redirect(url_for("supplier"))
+
+    if duplicate_exists(Supplier, Supplier.nama_supplier, nama_supplier, exclude_id=id):
+        flash("Nama supplier sudah digunakan oleh data lain.", "danger")
+        return redirect(url_for("supplier"))
+
+    supplier_data.nama_supplier = nama_supplier
+    supplier_data.kontak = kontak
+    supplier_data.alamat = alamat
 
     db.session.commit()
 
@@ -625,10 +783,21 @@ def cabang():
 @login_required
 @role_required(ROLE_SUPER_ADMIN)
 def tambah_cabang():
+    nama_cabang = clean_text(request.form.get("nama_cabang"))
+    alamat = clean_text(request.form.get("alamat"))
+    kontak = clean_text(request.form.get("kontak"))
+
+    if not validate_required(nama_cabang, "Nama cabang"):
+        return redirect(url_for("cabang"))
+
+    if duplicate_exists(Cabang, Cabang.nama_cabang, nama_cabang):
+        flash("Nama cabang sudah terdaftar.", "danger")
+        return redirect(url_for("cabang"))
+
     cabang_baru = Cabang(
-        nama_cabang=request.form.get("nama_cabang"),
-        alamat=request.form.get("alamat"),
-        kontak=request.form.get("kontak"),
+        nama_cabang=nama_cabang,
+        alamat=alamat,
+        kontak=kontak,
         is_active=True
     )
 
@@ -645,9 +814,20 @@ def tambah_cabang():
 def edit_cabang(id):
     cabang_data = Cabang.query.get_or_404(id)
 
-    cabang_data.nama_cabang = request.form.get("nama_cabang")
-    cabang_data.alamat = request.form.get("alamat")
-    cabang_data.kontak = request.form.get("kontak")
+    nama_cabang = clean_text(request.form.get("nama_cabang"))
+    alamat = clean_text(request.form.get("alamat"))
+    kontak = clean_text(request.form.get("kontak"))
+
+    if not validate_required(nama_cabang, "Nama cabang"):
+        return redirect(url_for("cabang"))
+
+    if duplicate_exists(Cabang, Cabang.nama_cabang, nama_cabang, exclude_id=id):
+        flash("Nama cabang sudah digunakan oleh data lain.", "danger")
+        return redirect(url_for("cabang"))
+
+    cabang_data.nama_cabang = nama_cabang
+    cabang_data.alamat = alamat
+    cabang_data.kontak = kontak
 
     db.session.commit()
 
@@ -680,22 +860,45 @@ def barang_masuk():
     cabang_list = get_allowed_cabang_query().all()
 
     if request.method == "POST":
-        barang_id = request.form.get("barang_id", type=int)
-        supplier_id = request.form.get("supplier_id", type=int)
-        jumlah = request.form.get("jumlah", type=int)
-        keterangan = request.form.get("keterangan")
+        barang_id = clean_number(request.form.get("barang_id"))
+        supplier_id = clean_number(request.form.get("supplier_id"), None)
+        jumlah = clean_number(request.form.get("jumlah"))
+        keterangan = clean_text(request.form.get("keterangan"))
 
         if current_user.role == ROLE_SUPER_ADMIN:
-            cabang_id = request.form.get("cabang_id", type=int)
+            cabang_id = clean_number(request.form.get("cabang_id"))
         else:
             cabang_id = current_user.cabang_id
+
+        if not validate_required(barang_id, "Barang"):
+            return redirect(url_for("barang_masuk"))
+
+        if not validate_cabang_required(cabang_id):
+            return redirect(url_for("barang_masuk"))
+
+        if not validate_positive_number(jumlah, "Jumlah barang masuk"):
+            return redirect(url_for("barang_masuk"))
 
         if not user_can_access_cabang(cabang_id):
             abort(403)
 
-        if not barang_id or not cabang_id or not jumlah or jumlah <= 0:
-            flash("Data barang masuk tidak valid.", "danger")
+        barang_data = Barang.query.filter_by(id=barang_id, is_active=True).first()
+        if not barang_data:
+            flash("Barang tidak valid atau sudah nonaktif.", "danger")
             return redirect(url_for("barang_masuk"))
+
+        cabang_data = Cabang.query.filter_by(id=cabang_id, is_active=True).first()
+        if not cabang_data:
+            flash("Cabang tidak valid atau sudah nonaktif.", "danger")
+            return redirect(url_for("barang_masuk"))
+
+        if supplier_id:
+            supplier_data = Supplier.query.filter_by(id=supplier_id, is_active=True).first()
+            if not supplier_data:
+                flash("Supplier tidak valid atau sudah nonaktif.", "danger")
+                return redirect(url_for("barang_masuk"))
+        else:
+            supplier_id = None
 
         transaksi = Transaksi(
             barang_id=barang_id,
@@ -755,20 +958,35 @@ def barang_keluar():
     cabang_list = get_allowed_cabang_query().all()
 
     if request.method == "POST":
-        barang_id = request.form.get("barang_id", type=int)
-        jumlah = request.form.get("jumlah", type=int)
-        keterangan = request.form.get("keterangan")
+        barang_id = clean_number(request.form.get("barang_id"))
+        jumlah = clean_number(request.form.get("jumlah"))
+        keterangan = clean_text(request.form.get("keterangan"))
 
         if current_user.role == ROLE_SUPER_ADMIN:
-            cabang_id = request.form.get("cabang_id", type=int)
+            cabang_id = clean_number(request.form.get("cabang_id"))
         else:
             cabang_id = current_user.cabang_id
+
+        if not validate_required(barang_id, "Barang"):
+            return redirect(url_for("barang_keluar"))
+
+        if not validate_cabang_required(cabang_id):
+            return redirect(url_for("barang_keluar"))
+
+        if not validate_positive_number(jumlah, "Jumlah barang keluar"):
+            return redirect(url_for("barang_keluar"))
 
         if not user_can_access_cabang(cabang_id):
             abort(403)
 
-        if not barang_id or not cabang_id or not jumlah or jumlah <= 0:
-            flash("Data barang keluar tidak valid.", "danger")
+        barang_data = Barang.query.filter_by(id=barang_id, is_active=True).first()
+        if not barang_data:
+            flash("Barang tidak valid atau sudah nonaktif.", "danger")
+            return redirect(url_for("barang_keluar"))
+
+        cabang_data = Cabang.query.filter_by(id=cabang_id, is_active=True).first()
+        if not cabang_data:
+            flash("Cabang tidak valid atau sudah nonaktif.", "danger")
             return redirect(url_for("barang_keluar"))
 
         stock_data = StockCabang.query.filter_by(
@@ -776,8 +994,15 @@ def barang_keluar():
             cabang_id=cabang_id
         ).first()
 
-        if not stock_data or stock_data.stock < jumlah:
-            flash("Stok tidak mencukupi.", "danger")
+        if not stock_data:
+            flash("Stok barang belum tersedia di cabang ini.", "danger")
+            return redirect(url_for("barang_keluar"))
+
+        if stock_data.stock < jumlah:
+            flash(
+                f"Stok tidak mencukupi. Stok tersedia hanya {stock_data.stock} {barang_data.satuan}.",
+                "danger"
+            )
             return redirect(url_for("barang_keluar"))
 
         transaksi = Transaksi(
@@ -791,6 +1016,11 @@ def barang_keluar():
         )
 
         stock_data.stock -= jumlah
+
+        if stock_data.stock < 0:
+            db.session.rollback()
+            flash("Transaksi dibatalkan karena stok menjadi minus.", "danger")
+            return redirect(url_for("barang_keluar"))
 
         db.session.add(transaksi)
         db.session.commit()
@@ -1357,31 +1587,48 @@ def users():
 
 
 def format_nomor_whatsapp(nomor):
-    if not nomor:
-        return None
-
-    nomor = nomor.strip().replace(" ", "").replace("-", "").replace("+", "")
-
-    if nomor.startswith("0"):
-        nomor = "62" + nomor[1:]
-
-    return nomor
+    return normalize_whatsapp_number(nomor)
 
 
 @app.route("/users/tambah", methods=["POST"])
 @login_required
 @role_required(ROLE_SUPER_ADMIN)
 def tambah_user():
-    username = request.form.get("username")
+    username = clean_text(request.form.get("username"))
     password = request.form.get("password")
-    nama_lengkap = request.form.get("nama_lengkap")
-    role = request.form.get("role")
-    cabang_id = request.form.get("cabang_id", type=int)
+    nama_lengkap = clean_text(request.form.get("nama_lengkap"))
+    role = clean_text(request.form.get("role"))
+    cabang_id = clean_number(request.form.get("cabang_id"), None)
     nomor_whatsapp = format_nomor_whatsapp(request.form.get("nomor_whatsapp"))
     menerima_alert = True if request.form.get("menerima_alert") == "on" else False
 
+    if not validate_required(username, "Username"):
+        return redirect(url_for("users"))
+
+    if not validate_required(password, "Password"):
+        return redirect(url_for("users"))
+
+    if not validate_required(nama_lengkap, "Nama lengkap"):
+        return redirect(url_for("users"))
+
+    if role not in [ROLE_SUPER_ADMIN, ROLE_ADMIN_CABANG, ROLE_OPERATOR, ROLE_VIEWER]:
+        flash("Role user tidak valid.", "danger")
+        return redirect(url_for("users"))
+
     if role == ROLE_SUPER_ADMIN:
         cabang_id = None
+    else:
+        if not validate_cabang_required(cabang_id):
+            return redirect(url_for("users"))
+
+        cabang_data = Cabang.query.filter_by(id=cabang_id, is_active=True).first()
+        if not cabang_data:
+            flash("Cabang user tidak valid atau sudah nonaktif.", "danger")
+            return redirect(url_for("users"))
+
+    if User.query.filter(func.lower(User.username) == username.lower()).first():
+        flash("Username sudah digunakan.", "danger")
+        return redirect(url_for("users"))
 
     user_baru = User(
         username=username,
@@ -1408,15 +1655,45 @@ def tambah_user():
 def edit_user(id):
     user_data = User.query.get_or_404(id)
 
-    user_data.nama_lengkap = request.form.get("nama_lengkap")
-    user_data.username = request.form.get("username")
-    user_data.role = request.form.get("role")
+    username = clean_text(request.form.get("username"))
+    nama_lengkap = clean_text(request.form.get("nama_lengkap"))
+    role = clean_text(request.form.get("role"))
+    cabang_id = clean_number(request.form.get("cabang_id"), None)
 
-    cabang_id = request.form.get("cabang_id", type=int)
+    if not validate_required(username, "Username"):
+        return redirect(url_for("users"))
+
+    if not validate_required(nama_lengkap, "Nama lengkap"):
+        return redirect(url_for("users"))
+
+    if role not in [ROLE_SUPER_ADMIN, ROLE_ADMIN_CABANG, ROLE_OPERATOR, ROLE_VIEWER]:
+        flash("Role user tidak valid.", "danger")
+        return redirect(url_for("users"))
+
+    username_terpakai = User.query.filter(
+        func.lower(User.username) == username.lower(),
+        User.id != id
+    ).first()
+
+    if username_terpakai:
+        flash("Username sudah digunakan oleh user lain.", "danger")
+        return redirect(url_for("users"))
+
+    user_data.nama_lengkap = nama_lengkap
+    user_data.username = username
+    user_data.role = role
 
     if user_data.role == ROLE_SUPER_ADMIN:
         user_data.cabang_id = None
     else:
+        if not validate_cabang_required(cabang_id):
+            return redirect(url_for("users"))
+
+        cabang_data = Cabang.query.filter_by(id=cabang_id, is_active=True).first()
+        if not cabang_data:
+            flash("Cabang user tidak valid atau sudah nonaktif.", "danger")
+            return redirect(url_for("users"))
+
         user_data.cabang_id = cabang_id
 
     user_data.nomor_whatsapp = format_nomor_whatsapp(
@@ -1482,6 +1759,59 @@ def delete_user(id):
 
     flash("User berhasil dihapus permanen.", "success")
     return redirect(url_for("users"))
+
+
+
+# =========================================================
+# WHATSAPP ALERT LOG
+# =========================================================
+@app.route("/whatsapp/log")
+@login_required
+@role_required(ROLE_SUPER_ADMIN)
+def whatsapp_log():
+    kategori = clean_text(request.args.get("kategori"))
+    status = clean_text(request.args.get("status"))
+
+    query = WhatsAppAlertLog.query
+
+    if kategori:
+        query = query.filter(
+            WhatsAppAlertLog.kategori_alert == kategori
+        )
+
+    if status:
+        query = query.filter(
+            WhatsAppAlertLog.status == status
+        )
+
+    data_log = query.order_by(
+        WhatsAppAlertLog.created_at.desc()
+    ).all()
+
+    total_log = query.count()
+
+    total_sent = WhatsAppAlertLog.query.filter_by(
+        status="sent"
+    ).count()
+
+    total_failed = WhatsAppAlertLog.query.filter_by(
+        status="failed"
+    ).count()
+
+    total_pending = WhatsAppAlertLog.query.filter_by(
+        status="pending"
+    ).count()
+
+    return render_template(
+        "whatsapp_log.html",
+        data_log=data_log,
+        kategori=kategori,
+        status=status,
+        total_log=total_log,
+        total_sent=total_sent,
+        total_failed=total_failed,
+        total_pending=total_pending
+    )
 
 
 # =========================================================

@@ -67,34 +67,35 @@
         }
 
         .brand img {
-            width: 100px;
-            height: 120px;
+            width: 82px;
+            height: 82px;
             object-fit: contain;
-            border-radius: 100px;
+            border-radius: 50%;
             background: white;
-            padding: .1px;
+            padding: 4px;
         }
 
         .brand-title {
             font-size: 22px;
-                background: #010613;
-                color: white;
-                padding: 3px 8px;
-                border-radius: 6px;
-                display: inline-block;
-                margin-top: 4px;
-                font-weight: 700;
+            background: #010613;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 6px;
+            display: inline-block;
+            margin-top: 4px;
+            font-weight: 800;
+            letter-spacing: .5px;
         }
 
         .brand-subtitle {
-                font-size: 12px;
-                background: #010613;
-                color: gold;
-                padding: 3px 8px;
-                border-radius: 6px;
-                display: inline-block;
-                margin-top: 4px;
-                font-weight: 700;
+            font-size: 12px;
+            background: #010613;
+            color: gold;
+            padding: 3px 8px;
+            border-radius: 6px;
+            display: inline-block;
+            margin-top: 5px;
+            font-weight: 700;
         }
 
         .menu-label {
@@ -119,7 +120,7 @@
 
         .menu a:hover,
         .menu a.active {
-            background: rgba(255,255,255,.18);
+            background: rgba(255,255,255,.20);
             backdrop-filter: blur(8px);
         }
 
@@ -377,21 +378,31 @@
             margin-bottom: 18px;
             font-weight: 600;
             font-size: 14px;
+            border: 1px solid transparent;
         }
 
         .alert-success {
-            background: #dcfce7;
-            color: #166534;
+            background: #e8f8ef;
+            color: #0f7a35;
+            border-color: #bfe8cc;
         }
 
         .alert-danger {
-            background: #fee2e2;
-            color: #991b1b;
+            background: #fdeaea;
+            color: #b42318;
+            border-color: #f5b5b5;
         }
 
         .alert-warning {
             background: #fef3c7;
             color: #92400e;
+            border-color: #fde68a;
+        }
+
+        .alert-info {
+            background: #eff6ff;
+            color: #1d4ed8;
+            border-color: #bfdbfe;
         }
 
         .mobile-toggle {
@@ -402,6 +413,7 @@
             padding: 10px 13px;
             border-radius: 12px;
             font-weight: 800;
+            cursor: pointer;
         }
 
         .table-responsive {
@@ -422,109 +434,111 @@
             margin-top: 18px;
             background: rgba(17,24,39,.25) !important;
         }
+
         .sidebar-overlay {
             display: none;
         }
+
         @media (max-width: 900px) {
-        .sidebar {
-            transform: translateX(-100%);
-            transition: .25s;
-            width: 260px;
-            z-index: 30;
-        }
+            .sidebar {
+                transform: translateX(-100%);
+                transition: .25s;
+                width: 260px;
+                z-index: 30;
+            }
 
-        .sidebar.show {
-            transform: translateX(0);
-        }
+            .sidebar.show {
+                transform: translateX(0);
+            }
 
-        .main {
-            margin-left: 0;
-            width: 100%;
-        }
+            .main {
+                margin-left: 0;
+                width: 100%;
+            }
 
-        .mobile-toggle {
-            display: block;
-            flex-shrink: 0;
-        }
+            .mobile-toggle {
+                display: block;
+                flex-shrink: 0;
+            }
 
-        .topbar {
-            padding: 12px 14px;
-            gap: 10px;
-        }
+            .topbar {
+                padding: 12px 14px;
+                gap: 10px;
+            }
 
-        .content {
-            padding: 14px;
-        }
+            .content {
+                padding: 14px;
+            }
 
-        .grid-4,
-        .grid-3,
-        .grid-2 {
-            grid-template-columns: 1fr;
-        }
+            .grid-4,
+            .grid-3,
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
 
-        .user-info {
-            display: none;
-        }
+            .user-info {
+                display: none;
+            }
 
-        .user-box {
-            padding: 7px 9px;
-            border-radius: 14px;
-        }
+            .user-box {
+                padding: 7px 9px;
+                border-radius: 14px;
+            }
 
-        .avatar {
-            width: 34px;
-            height: 34px;
-            font-size: 14px;
-        }
+            .avatar {
+                width: 34px;
+                height: 34px;
+                font-size: 14px;
+            }
 
-        .page-title {
-            flex: 1;
-        }
+            .page-title {
+                flex: 1;
+            }
 
-        .page-title h1 {
-            font-size: 20px;
-            line-height: 1.2;
-        }
+            .page-title h1 {
+                font-size: 20px;
+                line-height: 1.2;
+            }
 
-        .page-title p {
-            font-size: 12px;
-            line-height: 1.3;
-        }
+            .page-title p {
+                font-size: 12px;
+                line-height: 1.3;
+            }
 
-        .card,
-        .stat-card {
-            border-radius: 18px;
-            padding: 16px;
-        }
+            .card,
+            .stat-card {
+                border-radius: 18px;
+                padding: 16px;
+            }
 
-        .stat-value {
-            font-size: 26px;
-        }
+            .stat-value {
+                font-size: 26px;
+            }
 
-        table {
-            font-size: 13px;
-            min-width: 760px;
-        }
+            table {
+                font-size: 13px;
+                min-width: 760px;
+            }
 
-        th,
-        td {
-            padding: 10px;
-        }
+            th,
+            td {
+                padding: 10px;
+            }
 
-        .btn {
-            width: 100%;
-            text-align: center;
-            margin-bottom: 8px;
-        }
+            .btn {
+                width: 100%;
+                text-align: center;
+                margin-bottom: 8px;
+            }
 
-        .sidebar-overlay.show {
-            display: block;
-            position: fixed;
-            inset: 0;
-            background: rgba(0,0,0,0.35);
-            z-index: 25;
+            .sidebar-overlay.show {
+                display: block;
+                position: fixed;
+                inset: 0;
+                background: rgba(0,0,0,0.35);
+                z-index: 25;
+            }
         }
-    }
     </style>
 
     {% block extra_css %}{% endblock %}
@@ -533,11 +547,12 @@
 
 {% if current_user.is_authenticated %}
 <div class="app">
-<div
-    class="sidebar-overlay"
-    id="sidebarOverlay"
-    onclick="toggleSidebar()"
-></div>
+
+    <div
+        class="sidebar-overlay"
+        id="sidebarOverlay"
+        onclick="toggleSidebar()"
+    ></div>
 
     <aside class="sidebar" id="sidebar">
         <div class="brand">
@@ -551,12 +566,12 @@
         <nav class="menu">
             <div class="menu-label">Utama</div>
 
-            <a href="{{ url_for('dashboard') }}">
+            <a href="{{ url_for('dashboard') }}" class="{% if request.endpoint == 'dashboard' %}active{% endif %}">
                 🏠 Dashboard
             </a>
 
             {% if current_user.role in ['super_admin', 'admin_cabang', 'viewer'] %}
-            <a href="{{ url_for('laporan') }}">
+            <a href="{{ url_for('laporan') }}" class="{% if request.endpoint == 'laporan' %}active{% endif %}">
                 📊 Laporan
             </a>
             {% endif %}
@@ -564,32 +579,38 @@
             <div class="menu-label">Operasional</div>
 
             {% if current_user.role in ['super_admin', 'admin_cabang', 'operator_gudang'] %}
-            <a href="{{ url_for('barang_masuk') }}">
+            <a href="{{ url_for('barang_masuk') }}" class="{% if request.endpoint == 'barang_masuk' %}active{% endif %}">
                 📥 Barang Masuk
             </a>
 
-            <a href="{{ url_for('barang_keluar') }}">
+            <a href="{{ url_for('barang_keluar') }}" class="{% if request.endpoint == 'barang_keluar' %}active{% endif %}">
                 📤 Barang Keluar
             </a>
             {% endif %}
 
             <div class="menu-label">Master Data</div>
 
-            <a href="{{ url_for('barang') }}">
+            <a href="{{ url_for('barang') }}" class="{% if request.endpoint == 'barang' %}active{% endif %}">
                 📦 Master Barang
             </a>
 
             {% if current_user.role == 'super_admin' %}
-            <a href="{{ url_for('supplier') }}">
+            <a href="{{ url_for('supplier') }}" class="{% if request.endpoint == 'supplier' %}active{% endif %}">
                 🚚 Supplier
             </a>
 
-            <a href="{{ url_for('cabang') }}">
+            <a href="{{ url_for('cabang') }}" class="{% if request.endpoint == 'cabang' %}active{% endif %}">
                 🏢 Cabang
             </a>
 
-            <a href="{{ url_for('users') }}">
+            <a href="{{ url_for('users') }}" class="{% if request.endpoint == 'users' %}active{% endif %}">
                 👥 User Management
+            </a>
+
+            <div class="menu-label">Monitoring</div>
+
+            <a href="{{ url_for('whatsapp_log') }}" class="{% if request.endpoint == 'whatsapp_log' %}active{% endif %}">
+                📲 WhatsApp Alert
             </a>
             {% endif %}
 
@@ -603,7 +624,7 @@
 
     <main class="main">
         <header class="topbar">
-            <button class="mobile-toggle" onclick="toggleSidebar()">☰</button>
+            <button class="mobile-toggle" type="button" onclick="toggleSidebar()">☰</button>
 
             <div class="page-title">
                 <h1>{% block page_title %}Gigamas{% endblock %}</h1>
@@ -612,10 +633,10 @@
 
             <div class="user-box">
                 <div class="avatar">
-                    {{ current_user.nama_lengkap[0]|upper }}
+                    {{ (current_user.nama_lengkap or current_user.username or 'G')[0]|upper }}
                 </div>
                 <div class="user-info">
-                    <strong>{{ current_user.nama_lengkap }}</strong>
+                    <strong>{{ current_user.nama_lengkap or current_user.username }}</strong>
                     <span>{{ current_user.role }}</span>
                 </div>
             </div>
@@ -625,11 +646,13 @@
 
             {% with messages = get_flashed_messages(with_categories=true) %}
                 {% if messages %}
-                    {% for category, message in messages %}
-                        <div class="alert alert-{{ category }}">
-                            {{ message }}
-                        </div>
-                    {% endfor %}
+                    <div class="flash-wrapper">
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ category }}">
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    </div>
                 {% endif %}
             {% endwith %}
 
@@ -644,8 +667,13 @@
 
 <script>
     function toggleSidebar() {
-        document.getElementById("sidebar").classList.toggle("show");
-        document.getElementById("sidebarOverlay").classList.toggle("show");
+        const sidebar = document.getElementById("sidebar");
+        const overlay = document.getElementById("sidebarOverlay");
+
+        if (sidebar && overlay) {
+            sidebar.classList.toggle("show");
+            overlay.classList.toggle("show");
+        }
     }
 </script>
 

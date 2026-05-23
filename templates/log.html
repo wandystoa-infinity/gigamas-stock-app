@@ -1,0 +1,232 @@
+{% extends "base.html" %}
+
+{% block title %}
+WhatsApp Alert
+{% endblock %}
+
+{% block page_title %}
+WhatsApp Alert Monitoring
+{% endblock %}
+
+{% block page_subtitle %}
+Monitoring pengiriman WhatsApp otomatis Gigamas
+{% endblock %}
+
+{% block content %}
+
+<div class="card">
+
+    <div
+        style="
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+            gap:15px;
+            flex-wrap:wrap;
+            margin-bottom:20px;
+        "
+    >
+
+        <div class="section-title">
+            Log WhatsApp Alert
+        </div>
+
+        <form
+            method="GET"
+            style="
+                display:flex;
+                gap:10px;
+                flex-wrap:wrap;
+            "
+        >
+
+            <select name="kategori">
+
+                <option value="">
+                    Semua Kategori
+                </option>
+
+                <option value="stok_menipis">
+                    Stok Menipis
+                </option>
+
+                <option value="stok_kritis">
+                    Stok Kritis
+                </option>
+
+                <option value="barang_keluar_besar">
+                    Barang Keluar Besar
+                </option>
+
+            </select>
+
+            <select name="status">
+
+                <option value="">
+                    Semua Status
+                </option>
+
+                <option value="sent">
+                    Sent
+                </option>
+
+                <option value="failed">
+                    Failed
+                </option>
+
+                <option value="pending">
+                    Pending
+                </option>
+
+            </select>
+
+            <button
+                type="submit"
+                class="btn btn-primary"
+            >
+                Filter
+            </button>
+
+        </form>
+
+    </div>
+
+
+    <div class="table-responsive">
+
+        <table>
+
+            <thead>
+
+                <tr>
+
+                    <th>No</th>
+                    <th>Waktu</th>
+                    <th>Kategori</th>
+                    <th>Tujuan</th>
+                    <th>Status</th>
+                    <th>Pesan</th>
+
+                </tr>
+
+            </thead>
+
+
+            <tbody>
+
+                {% for log in data_log %}
+
+                <tr>
+
+                    <td>
+                        {{ loop.index }}
+                    </td>
+
+                    <td>
+
+                        {% if log.created_at %}
+                            {{ log.created_at.strftime('%d-%m-%Y %H:%M') }}
+                        {% else %}
+                            -
+                        {% endif %}
+
+                    </td>
+
+                    <td>
+
+                        {% if log.kategori_alert == 'stok_menipis' %}
+                        <span class="badge badge-warning">
+                            Stok Menipis
+                        </span>
+
+                        {% elif log.kategori_alert == 'stok_kritis' %}
+                        <span class="badge badge-danger">
+                            Stok Kritis
+                        </span>
+
+                        {% elif log.kategori_alert == 'barang_keluar_besar' %}
+                        <span class="badge badge-dark">
+                            Barang Keluar Besar
+                        </span>
+
+                        {% else %}
+                        <span class="badge badge-dark">
+                            {{ log.kategori_alert }}
+                        </span>
+                        {% endif %}
+
+                    </td>
+
+                    <td>
+
+                        <strong>
+                            {{ log.nama_tujuan }}
+                        </strong>
+
+                        <br>
+
+                        <span class="text-muted">
+                            {{ log.nomor_tujuan }}
+                        </span>
+
+                    </td>
+
+                    <td>
+
+                        {% if log.status == 'sent' %}
+                        <span class="badge badge-success">
+                            SENT
+                        </span>
+
+                        {% elif log.status == 'failed' %}
+                        <span class="badge badge-danger">
+                            FAILED
+                        </span>
+
+                        {% else %}
+                        <span class="badge badge-warning">
+                            PENDING
+                        </span>
+                        {% endif %}
+
+                    </td>
+
+                    <td
+                        style="
+                            min-width:300px;
+                            white-space:pre-line;
+                        "
+                    >
+                        {{ log.pesan }}
+                    </td>
+
+                </tr>
+
+                {% else %}
+
+                <tr>
+
+                    <td
+                        colspan="6"
+                        style="
+                            text-align:center;
+                            padding:30px;
+                            color:#6b7280;
+                        "
+                    >
+                        Belum ada log WhatsApp.
+                    </td>
+
+                </tr>
+
+                {% endfor %}
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+</div>
+
+{% endblock %}

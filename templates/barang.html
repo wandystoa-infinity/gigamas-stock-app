@@ -24,6 +24,7 @@ Data barang Gigamas seluruh cabang
     <form
         method="POST"
         action="{{ url_for('tambah_barang') }}"
+        onsubmit="return cleanBarangForm(this)"
     >
 
         <div class="grid-2">
@@ -37,6 +38,9 @@ Data barang Gigamas seluruh cabang
                 <input
                     type="text"
                     name="nama_barang"
+                    placeholder="Contoh: Beras Premium 5 Kg"
+                    maxlength="100"
+                    autocomplete="off"
                     required
                 >
 
@@ -52,6 +56,9 @@ Data barang Gigamas seluruh cabang
                 <input
                     type="text"
                     name="kategori"
+                    placeholder="Contoh: Beras / Minyak / Gula"
+                    maxlength="80"
+                    autocomplete="off"
                     required
                 >
 
@@ -67,7 +74,9 @@ Data barang Gigamas seluruh cabang
                 <input
                     type="text"
                     name="satuan"
-                    placeholder="Kg / Sak / Dus"
+                    placeholder="Kg / Sak / Dus / Liter"
+                    maxlength="30"
+                    autocomplete="off"
                     required
                 >
 
@@ -77,13 +86,16 @@ Data barang Gigamas seluruh cabang
             <div class="form-group">
 
                 <label>
-                    Stock Minimum
+                    Stok Minimum
                 </label>
 
                 <input
                     type="number"
                     name="stok_minimum"
                     value="10"
+                    min="0"
+                    step="1"
+                    inputmode="numeric"
                     required
                 >
 
@@ -93,13 +105,16 @@ Data barang Gigamas seluruh cabang
             <div class="form-group">
 
                 <label>
-                    Stock Kritis
+                    Stok Kritis
                 </label>
 
                 <input
                     type="number"
                     name="stok_kritis"
                     value="5"
+                    min="0"
+                    step="1"
+                    inputmode="numeric"
                     required
                 >
 
@@ -144,6 +159,7 @@ Data barang Gigamas seluruh cabang
             type="text"
             id="searchBarang"
             placeholder="Cari barang..."
+            autocomplete="off"
             style="
                 max-width:260px;
             "
@@ -164,8 +180,8 @@ Data barang Gigamas seluruh cabang
                     <th>Nama Barang</th>
                     <th>Kategori</th>
                     <th>Satuan</th>
-                    <th>Stock Minimum</th>
-                    <th>Stock Kritis</th>
+                    <th>Stok Minimum</th>
+                    <th>Stok Kritis</th>
                     <th>Status</th>
 
                     {% if current_user.role == 'super_admin' %}
@@ -194,7 +210,7 @@ Data barang Gigamas seluruh cabang
                     </td>
 
                     <td>
-                        {{ barang.kategori }}
+                        {{ barang.kategori or "-" }}
                     </td>
 
                     <td>
@@ -252,32 +268,50 @@ Data barang Gigamas seluruh cabang
                         >
 
                             <button
+                                type="button"
                                 class="btn btn-light"
-                                onclick="openEditModal(
-                                    '{{ barang.id }}',
-                                    '{{ barang.nama_barang }}',
-                                    '{{ barang.kategori }}',
-                                    '{{ barang.satuan }}',
-                                    '{{ barang.stok_minimum }}',
-                                    '{{ barang.stok_kritis }}'
-                                )"
+                                onclick='openEditModal({{ {
+                                    "id": barang.id,
+                                    "nama": barang.nama_barang,
+                                    "kategori": barang.kategori or "",
+                                    "satuan": barang.satuan,
+                                    "stokMinimum": barang.stok_minimum,
+                                    "stokKritis": barang.stok_kritis
+                                } | tojson }})'
                             >
                                 Edit
                             </button>
 
+                            {% if barang.is_active %}
                             <a
                                 href="{{ url_for('hapus_barang', id=barang.id) }}"
                                 class="btn btn-danger"
                                 onclick="return confirm('Nonaktifkan barang ini?')"
                             >
-                                Hapus
+                                Nonaktifkan
                             </a>
+                            {% else %}
+                            <span class="badge badge-dark">
+                                Sudah Nonaktif
+                            </span>
+                            {% endif %}
 
                         </div>
 
                     </td>
                     {% endif %}
 
+                </tr>
+
+                {% else %}
+
+                <tr>
+                    <td
+                        colspan="{% if current_user.role == 'super_admin' %}8{% else %}7{% endif %}"
+                        style="text-align:center; color:#6b7280; padding:25px;"
+                    >
+                        Belum ada data barang.
+                    </td>
                 </tr>
 
                 {% endfor %}
@@ -293,6 +327,7 @@ Data barang Gigamas seluruh cabang
 
 
 <!-- MODAL EDIT -->
+{% if current_user.role == 'super_admin' %}
 <div
     id="editModal"
     style="
@@ -316,6 +351,8 @@ Data barang Gigamas seluruh cabang
             width:100%;
             max-width:600px;
             margin-bottom:0;
+            max-height:90vh;
+            overflow-y:auto;
         "
     >
 
@@ -325,6 +362,7 @@ Data barang Gigamas seluruh cabang
                 justify-content:space-between;
                 align-items:center;
                 margin-bottom:20px;
+                gap:12px;
             "
         >
 
@@ -333,8 +371,10 @@ Data barang Gigamas seluruh cabang
             </div>
 
             <button
+                type="button"
                 onclick="closeEditModal()"
                 class="btn btn-danger"
+                style="width:auto;"
             >
                 X
             </button>
@@ -345,6 +385,7 @@ Data barang Gigamas seluruh cabang
         <form
             method="POST"
             id="editForm"
+            onsubmit="return cleanBarangForm(this)"
         >
 
             <div class="grid-2">
@@ -359,6 +400,8 @@ Data barang Gigamas seluruh cabang
                         type="text"
                         name="nama_barang"
                         id="editNamaBarang"
+                        maxlength="100"
+                        autocomplete="off"
                         required
                     >
 
@@ -375,6 +418,8 @@ Data barang Gigamas seluruh cabang
                         type="text"
                         name="kategori"
                         id="editKategori"
+                        maxlength="80"
+                        autocomplete="off"
                         required
                     >
 
@@ -391,6 +436,8 @@ Data barang Gigamas seluruh cabang
                         type="text"
                         name="satuan"
                         id="editSatuan"
+                        maxlength="30"
+                        autocomplete="off"
                         required
                     >
 
@@ -400,13 +447,16 @@ Data barang Gigamas seluruh cabang
                 <div class="form-group">
 
                     <label>
-                        Stock Minimum
+                        Stok Minimum
                     </label>
 
                     <input
                         type="number"
                         name="stok_minimum"
                         id="editStokMinimum"
+                        min="0"
+                        step="1"
+                        inputmode="numeric"
                         required
                     >
 
@@ -416,13 +466,16 @@ Data barang Gigamas seluruh cabang
                 <div class="form-group">
 
                     <label>
-                        Stock Kritis
+                        Stok Kritis
                     </label>
 
                     <input
                         type="number"
                         name="stok_kritis"
                         id="editStokKritis"
+                        min="0"
+                        step="1"
+                        inputmode="numeric"
                         required
                     >
 
@@ -443,6 +496,7 @@ Data barang Gigamas seluruh cabang
     </div>
 
 </div>
+{% endif %}
 
 {% endblock %}
 
@@ -453,11 +507,54 @@ Data barang Gigamas seluruh cabang
 <script>
 
     // =========================================
+    // CLEAN FORM SEBELUM DIKIRIM
+    // =========================================
+    function cleanBarangForm(form) {
+
+        const textInputs = form.querySelectorAll(
+            'input[type="text"], textarea'
+        )
+
+        textInputs.forEach(input => {
+            input.value = input.value.trim().replace(/\s+/g, " ")
+        })
+
+        const stokMinimum = form.querySelector('[name="stok_minimum"]')
+        const stokKritis = form.querySelector('[name="stok_kritis"]')
+
+        if (stokMinimum && Number(stokMinimum.value) < 0) {
+            alert("Stok minimum tidak boleh minus.")
+            stokMinimum.focus()
+            return false
+        }
+
+        if (stokKritis && Number(stokKritis.value) < 0) {
+            alert("Stok kritis tidak boleh minus.")
+            stokKritis.focus()
+            return false
+        }
+
+        if (
+            stokMinimum &&
+            stokKritis &&
+            Number(stokKritis.value) > Number(stokMinimum.value)
+        ) {
+            return confirm(
+                "Stok kritis lebih besar dari stok minimum. Tetap simpan data?"
+            )
+        }
+
+        return true
+    }
+
+
+    // =========================================
     // SEARCH TABLE
     // =========================================
-    document
-        .getElementById("searchBarang")
-        .addEventListener(
+    const searchBarang = document.getElementById("searchBarang")
+
+    if (searchBarang) {
+        searchBarang.addEventListener(
             "keyup",
             function() {
 
@@ -482,19 +579,13 @@ Data barang Gigamas seluruh cabang
 
             }
         )
+    }
 
 
     // =========================================
     // MODAL EDIT
     // =========================================
-    function openEditModal(
-        id,
-        nama,
-        kategori,
-        satuan,
-        stokMinimum,
-        stokKritis
-    ){
+    function openEditModal(data){
 
         document
             .getElementById("editModal")
@@ -502,27 +593,27 @@ Data barang Gigamas seluruh cabang
 
         document
             .getElementById("editNamaBarang")
-            .value = nama
+            .value = data.nama || ""
 
         document
             .getElementById("editKategori")
-            .value = kategori
+            .value = data.kategori || ""
 
         document
             .getElementById("editSatuan")
-            .value = satuan
+            .value = data.satuan || ""
 
         document
             .getElementById("editStokMinimum")
-            .value = stokMinimum
+            .value = data.stokMinimum || 0
 
         document
             .getElementById("editStokKritis")
-            .value = stokKritis
+            .value = data.stokKritis || 0
 
         document
             .getElementById("editForm")
-            .action = "/barang/edit/" + id
+            .action = "/barang/edit/" + data.id
     }
 
 
@@ -533,6 +624,26 @@ Data barang Gigamas seluruh cabang
             .style.display = "none"
 
     }
+
+
+    // Tutup modal jika klik area gelap
+    const editModal = document.getElementById("editModal")
+
+    if (editModal) {
+        editModal.addEventListener("click", function(event) {
+            if (event.target === editModal) {
+                closeEditModal()
+            }
+        })
+    }
+
+
+    // Tutup modal dengan tombol ESC
+    document.addEventListener("keydown", function(event) {
+        if (event.key === "Escape" && editModal) {
+            closeEditModal()
+        }
+    })
 
 </script>
 

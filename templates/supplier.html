@@ -23,6 +23,7 @@ Manajemen supplier dan mitra pemasok Gigamas
     <form
         method="POST"
         action="{{ url_for('tambah_supplier') }}"
+        onsubmit="return cleanSupplierForm(this)"
     >
 
         <div class="grid-2">
@@ -36,6 +37,9 @@ Manajemen supplier dan mitra pemasok Gigamas
                 <input
                     type="text"
                     name="nama_supplier"
+                    placeholder="Contoh: CV Sumber Pangan"
+                    maxlength="120"
+                    autocomplete="off"
                     required
                 >
 
@@ -52,6 +56,8 @@ Manajemen supplier dan mitra pemasok Gigamas
                     type="text"
                     name="kontak"
                     placeholder="08xxxxxxxxxx"
+                    maxlength="30"
+                    autocomplete="off"
                 >
 
             </div>
@@ -66,6 +72,8 @@ Manajemen supplier dan mitra pemasok Gigamas
                 <textarea
                     name="alamat"
                     rows="4"
+                    maxlength="255"
+                    placeholder="Alamat lengkap supplier"
                 ></textarea>
 
             </div>
@@ -110,6 +118,7 @@ Manajemen supplier dan mitra pemasok Gigamas
             type="text"
             id="searchSupplier"
             placeholder="Cari supplier..."
+            autocomplete="off"
             style="max-width:260px;"
         >
 
@@ -190,31 +199,49 @@ Manajemen supplier dan mitra pemasok Gigamas
                         >
 
                             <button
+                                type="button"
                                 class="btn btn-light"
-                                onclick="openEditModal(
-                                    '{{ supplier.id }}',
-                                    `{{ supplier.nama_supplier }}`,
-                                    `{{ supplier.kontak or '' }}`,
-                                    `{{ supplier.alamat or '' }}`
-                                )"
+                                onclick='openEditModal({{ {
+                                    "id": supplier.id,
+                                    "nama": supplier.nama_supplier,
+                                    "kontak": supplier.kontak or "",
+                                    "alamat": supplier.alamat or ""
+                                } | tojson }})'
                             >
                                 Edit
                             </button>
 
 
+                            {% if supplier.is_active %}
                             <a
                                 href="{{ url_for('hapus_supplier', id=supplier.id) }}"
                                 class="btn btn-danger"
                                 onclick="return confirm('Nonaktifkan supplier ini?')"
                             >
-                                Hapus
+                                Nonaktifkan
                             </a>
+                            {% else %}
+                            <span class="badge badge-dark">
+                                Sudah Nonaktif
+                            </span>
+                            {% endif %}
 
                         </div>
 
                     </td>
                     {% endif %}
 
+                </tr>
+
+                {% else %}
+
+                <tr>
+                    <td
+                        colspan="{% if current_user.role == 'super_admin' %}6{% else %}5{% endif %}"
+                        style="text-align:center; color:#6b7280; padding:25px;"
+                    >
+                        Belum ada data supplier.
+                    </td>
                 </tr>
 
                 {% endfor %}
@@ -230,6 +257,7 @@ Manajemen supplier dan mitra pemasok Gigamas
 
 
 <!-- MODAL EDIT -->
+{% if current_user.role == 'super_admin' %}
 <div
     id="editModal"
     style="
@@ -253,6 +281,8 @@ Manajemen supplier dan mitra pemasok Gigamas
             width:100%;
             max-width:600px;
             margin-bottom:0;
+            max-height:90vh;
+            overflow-y:auto;
         "
     >
 
@@ -262,6 +292,7 @@ Manajemen supplier dan mitra pemasok Gigamas
                 justify-content:space-between;
                 align-items:center;
                 margin-bottom:20px;
+                gap:12px;
             "
         >
 
@@ -270,7 +301,9 @@ Manajemen supplier dan mitra pemasok Gigamas
             </div>
 
             <button
+                type="button"
                 class="btn btn-danger"
+                style="width:auto;"
                 onclick="closeEditModal()"
             >
                 X
@@ -282,6 +315,7 @@ Manajemen supplier dan mitra pemasok Gigamas
         <form
             method="POST"
             id="editForm"
+            onsubmit="return cleanSupplierForm(this)"
         >
 
             <div class="form-group">
@@ -294,6 +328,8 @@ Manajemen supplier dan mitra pemasok Gigamas
                     type="text"
                     name="nama_supplier"
                     id="editNamaSupplier"
+                    maxlength="120"
+                    autocomplete="off"
                     required
                 >
 
@@ -310,6 +346,8 @@ Manajemen supplier dan mitra pemasok Gigamas
                     type="text"
                     name="kontak"
                     id="editKontak"
+                    maxlength="30"
+                    autocomplete="off"
                 >
 
             </div>
@@ -325,6 +363,7 @@ Manajemen supplier dan mitra pemasok Gigamas
                     name="alamat"
                     id="editAlamat"
                     rows="4"
+                    maxlength="255"
                 ></textarea>
 
             </div>
@@ -342,6 +381,7 @@ Manajemen supplier dan mitra pemasok Gigamas
     </div>
 
 </div>
+{% endif %}
 
 {% endblock %}
 
@@ -351,10 +391,51 @@ Manajemen supplier dan mitra pemasok Gigamas
 
 <script>
 
-    // SEARCH
-    document
-        .getElementById("searchSupplier")
-        .addEventListener(
+    // =========================================
+    // CLEAN FORM SEBELUM DIKIRIM
+    // =========================================
+    function cleanSupplierForm(form) {
+
+        const textInputs = form.querySelectorAll(
+            'input[type="text"], textarea'
+        )
+
+        textInputs.forEach(input => {
+            input.value = input.value.trim().replace(/\s+/g, " ")
+        })
+
+        const namaSupplier = form.querySelector('[name="nama_supplier"]')
+        const kontak = form.querySelector('[name="kontak"]')
+
+        if (!namaSupplier.value) {
+            alert("Nama supplier wajib diisi.")
+            namaSupplier.focus()
+            return false
+        }
+
+        if (kontak && kontak.value) {
+            const kontakBersih = kontak.value.replace(/[^\d+]/g, "")
+
+            if (kontakBersih.length < 8) {
+                alert("Kontak supplier terlalu pendek.")
+                kontak.focus()
+                return false
+            }
+
+            kontak.value = kontakBersih
+        }
+
+        return true
+    }
+
+
+    // =========================================
+    // SEARCH TABLE
+    // =========================================
+    const searchSupplier = document.getElementById("searchSupplier")
+
+    if (searchSupplier) {
+        searchSupplier.addEventListener(
             "keyup",
             function(){
 
@@ -379,15 +460,13 @@ Manajemen supplier dan mitra pemasok Gigamas
 
             }
         )
+    }
 
 
+    // =========================================
     // EDIT MODAL
-    function openEditModal(
-        id,
-        nama,
-        kontak,
-        alamat
-    ){
+    // =========================================
+    function openEditModal(data){
 
         document
             .getElementById("editModal")
@@ -395,19 +474,19 @@ Manajemen supplier dan mitra pemasok Gigamas
 
         document
             .getElementById("editNamaSupplier")
-            .value = nama
+            .value = data.nama || ""
 
         document
             .getElementById("editKontak")
-            .value = kontak
+            .value = data.kontak || ""
 
         document
             .getElementById("editAlamat")
-            .value = alamat
+            .value = data.alamat || ""
 
         document
             .getElementById("editForm")
-            .action = "/supplier/edit/" + id
+            .action = "/supplier/edit/" + data.id
     }
 
 
@@ -418,6 +497,26 @@ Manajemen supplier dan mitra pemasok Gigamas
             .style.display = "none"
 
     }
+
+
+    // Tutup modal jika klik area gelap
+    const editModal = document.getElementById("editModal")
+
+    if (editModal) {
+        editModal.addEventListener("click", function(event) {
+            if (event.target === editModal) {
+                closeEditModal()
+            }
+        })
+    }
+
+
+    // Tutup modal dengan tombol ESC
+    document.addEventListener("keydown", function(event) {
+        if (event.key === "Escape" && editModal) {
+            closeEditModal()
+        }
+    })
 
 </script>
 

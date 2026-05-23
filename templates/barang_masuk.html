@@ -15,7 +15,11 @@ Input penerimaan barang dan update stok cabang
     <div class="card">
         <div class="section-title">Input Barang Masuk</div>
 
-        <form method="POST" action="{{ url_for('barang_masuk') }}">
+        <form
+            method="POST"
+            action="{{ url_for('barang_masuk') }}"
+            onsubmit="return cleanBarangMasukForm(this)"
+        >
 
             {% if current_user.role == 'super_admin' %}
             <div class="form-group">
@@ -23,11 +27,23 @@ Input penerimaan barang dan update stok cabang
                 <select name="cabang_id" required>
                     <option value="">Pilih Cabang</option>
                     {% for cabang in cabang_list %}
-                    <option value="{{ cabang.id }}">{{ cabang.nama_cabang }}</option>
+                    <option value="{{ cabang.id }}">
+                        {{ cabang.nama_cabang }}
+                    </option>
                     {% endfor %}
                 </select>
             </div>
+            {% else %}
+            <div class="form-group">
+                <label>Cabang</label>
+                <input
+                    type="text"
+                    value="{{ current_user.cabang.nama_cabang if current_user.cabang else 'Cabang belum terhubung' }}"
+                    readonly
+                >
+            </div>
             {% endif %}
+
 
             <div class="form-group">
                 <label>Barang</label>
@@ -41,6 +57,7 @@ Input penerimaan barang dan update stok cabang
                 </select>
             </div>
 
+
             <div class="form-group">
                 <label>Supplier</label>
                 <select name="supplier_id">
@@ -53,15 +70,31 @@ Input penerimaan barang dan update stok cabang
                 </select>
             </div>
 
+
             <div class="form-group">
                 <label>Jumlah Masuk</label>
-                <input type="number" name="jumlah" min="1" required>
+                <input
+                    type="number"
+                    name="jumlah"
+                    min="1"
+                    step="1"
+                    inputmode="numeric"
+                    placeholder="Masukkan jumlah barang masuk"
+                    required
+                >
             </div>
+
 
             <div class="form-group">
                 <label>Keterangan</label>
-                <textarea name="keterangan" rows="4" placeholder="Contoh: pembelian, retur, tambahan stok..."></textarea>
+                <textarea
+                    name="keterangan"
+                    rows="4"
+                    maxlength="255"
+                    placeholder="Contoh: pembelian, retur, tambahan stok..."
+                ></textarea>
             </div>
+
 
             <button type="submit" class="btn btn-primary">
                 Simpan Barang Masuk
@@ -99,6 +132,12 @@ Input penerimaan barang dan update stok cabang
                 <td><span class="badge badge-danger">Tidak bisa input</span></td>
             </tr>
         </table>
+
+        <br>
+
+        <p class="text-muted" style="line-height:1.7; font-size:13px;">
+            Catatan: jumlah barang masuk wajib lebih dari 0. Sistem otomatis menolak angka kosong, nol, atau minus.
+        </p>
     </div>
 
 </div>
@@ -113,6 +152,7 @@ Input penerimaan barang dan update stok cabang
             type="text"
             id="searchMasuk"
             placeholder="Cari riwayat..."
+            autocomplete="off"
             style="max-width:260px;"
         >
     </div>
@@ -137,13 +177,19 @@ Input penerimaan barang dan update stok cabang
                 <tr>
                     <td>{{ loop.index }}</td>
 
-                    <td>{{ trx.tanggal.strftime('%d-%m-%Y %H:%M') }}</td>
-
                     <td>
-                        <strong>{{ trx.cabang.nama_cabang }}</strong>
+                        {{ trx.tanggal.strftime('%d-%m-%Y %H:%M') if trx.tanggal else '-' }}
                     </td>
 
-                    <td>{{ trx.barang.nama_barang }}</td>
+                    <td>
+                        <strong>
+                            {{ trx.cabang.nama_cabang if trx.cabang else '-' }}
+                        </strong>
+                    </td>
+
+                    <td>
+                        {{ trx.barang.nama_barang if trx.barang else '-' }}
+                    </td>
 
                     <td>
                         {% if trx.supplier %}
@@ -155,11 +201,13 @@ Input penerimaan barang dan update stok cabang
 
                     <td>
                         <span class="badge badge-success">
-                            + {{ trx.jumlah }} {{ trx.barang.satuan }}
+                            + {{ trx.jumlah }} {{ trx.barang.satuan if trx.barang else '' }}
                         </span>
                     </td>
 
-                    <td>{{ trx.user.nama_lengkap }}</td>
+                    <td>
+                        {{ trx.user.nama_lengkap if trx.user else '-' }}
+                    </td>
 
                     <td>
                         {% if trx.keterangan %}
@@ -171,7 +219,7 @@ Input penerimaan barang dan update stok cabang
                 </tr>
                 {% else %}
                 <tr>
-                    <td colspan="8" style="text-align:center; color:#6b7280;">
+                    <td colspan="8" style="text-align:center; color:#6b7280; padding:25px;">
                         Belum ada transaksi barang masuk.
                     </td>
                 </tr>
@@ -188,9 +236,56 @@ Input penerimaan barang dan update stok cabang
 {% block extra_js %}
 
 <script>
-    document
-        .getElementById("searchMasuk")
-        .addEventListener("keyup", function () {
+
+    // =========================================
+    // CLEAN FORM BARANG MASUK
+    // =========================================
+    function cleanBarangMasukForm(form) {
+
+        const jumlah = form.querySelector('[name="jumlah"]')
+        const keterangan = form.querySelector('[name="keterangan"]')
+        const barang = form.querySelector('[name="barang_id"]')
+        const cabang = form.querySelector('[name="cabang_id"]')
+
+        if (keterangan) {
+            keterangan.value = keterangan.value.trim().replace(/\s+/g, " ")
+        }
+
+        if (cabang && !cabang.value) {
+            alert("Cabang wajib dipilih.")
+            cabang.focus()
+            return false
+        }
+
+        if (!barang.value) {
+            alert("Barang wajib dipilih.")
+            barang.focus()
+            return false
+        }
+
+        if (!jumlah.value || Number(jumlah.value) <= 0) {
+            alert("Jumlah barang masuk harus lebih dari 0.")
+            jumlah.focus()
+            return false
+        }
+
+        if (!Number.isInteger(Number(jumlah.value))) {
+            alert("Jumlah barang masuk harus berupa angka bulat.")
+            jumlah.focus()
+            return false
+        }
+
+        return true
+    }
+
+
+    // =========================================
+    // SEARCH TABLE
+    // =========================================
+    const searchMasuk = document.getElementById("searchMasuk")
+
+    if (searchMasuk) {
+        searchMasuk.addEventListener("keyup", function () {
             let value = this.value.toLowerCase()
             let rows = document.querySelectorAll("#tableMasuk tbody tr")
 
@@ -199,6 +294,8 @@ Input penerimaan barang dan update stok cabang
                 row.style.display = text.includes(value) ? "" : "none"
             })
         })
+    }
+
 </script>
 
 {% endblock %}
