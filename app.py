@@ -260,11 +260,9 @@ def duplicate_exists(model, column, value, exclude_id=None):
 # =========================================================
 def kirim_whatsapp_asli(nomor_tujuan, pesan):
 
-    access_token = os.getenv("WHATSAPP_TOKEN")
+    access_token = os.getenv("WHATSAPP_ACCESS_TOKEN")
     phone_number_id = os.getenv("WHATSAPP_PHONE_NUMBER_ID")
     api_version = os.getenv("WHATSAPP_API_VERSION", "v20.0")
-
-    
 
     url = f"https://graph.facebook.com/{api_version}/{phone_number_id}/messages"
 
@@ -276,7 +274,7 @@ def kirim_whatsapp_asli(nomor_tujuan, pesan):
     payload = {
         "messaging_product": "whatsapp",
         "to": nomor_tujuan,
-        "type": "template",
+        "type": "text",
         "text": {
             "body": pesan
         }
@@ -292,6 +290,7 @@ def kirim_whatsapp_asli(nomor_tujuan, pesan):
 
         response_json = response.json()
 
+        print("WHATSAPP STATUS:", response.status_code)
         print("WHATSAPP RESPONSE:")
         print(response_json)
 
@@ -301,6 +300,8 @@ def kirim_whatsapp_asli(nomor_tujuan, pesan):
         return False, json.dumps(response_json)
 
     except Exception as e:
+        print("ERROR WHATSAPP:", e)
+        return False, str(e)
         return False, str(e)
 
 
