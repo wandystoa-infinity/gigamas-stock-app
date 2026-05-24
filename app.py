@@ -23,6 +23,7 @@ from flask_migrate import Migrate
 from sqlalchemy import func
 from functools import wraps
 from datetime import datetime, date, timedelta
+from zoneinfo import ZoneInfo
 import os
 import json
 import requests
@@ -30,6 +31,14 @@ import re
 from dotenv import load_dotenv
 
 load_dotenv()
+# =========================================================
+# TIMEZONE WIB
+# =========================================================
+WIB = ZoneInfo("Asia/Jakarta")
+
+
+def now_wib():
+    return datetime.now(WIB)
 
 from config import Config
 from io import BytesIO
@@ -63,7 +72,6 @@ from reportlab.lib.styles import (
     getSampleStyleSheet,
     ParagraphStyle
 )
-
 
 
 # =========================================================
@@ -349,7 +357,7 @@ def buat_log_whatsapp(
         if sukses:
             log.status = "sent"
             log.response_api = hasil
-            log.sent_at = datetime.now()
+            log.sent_at = now_wib()
         else:
             log.status = "failed"
             log.response_api = hasil
@@ -406,7 +414,7 @@ def cek_alert_barang_keluar_besar(transaksi):
             f"Barang: {transaksi.barang.nama_barang}\n"
             f"Jumlah Keluar: {transaksi.jumlah} {transaksi.barang.satuan}\n"
             f"Operator: {transaksi.user.nama_lengkap}\n"
-            f"Tanggal: {transaksi.tanggal}\n\n"
+            f"Tanggal: {now_wib().strftime('%d-%m-%Y %H:%M:%S')}\n\n"
             f"Mohon dilakukan pengecekan transaksi."
         )
 
