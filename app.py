@@ -1869,7 +1869,14 @@ def api_dashboard_chart():
 
     return jsonify(list(result.values()))
 
-
+@app.route("/service-worker.js")
+def service_worker():
+    response = make_response(
+        send_file("service-worker.js")
+    )
+    response.headers["Content-Type"] = "application/javascript"
+    response.headers["Service-Worker-Allowed"] = "/"
+    return response
 # =========================================================
 # ERROR HANDLER
 # =========================================================

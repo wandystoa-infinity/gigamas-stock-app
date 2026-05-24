@@ -1,0 +1,23 @@
+{
+  "name": "Gigamas - Gizi Generasi Emas",
+  "short_name": "Gigamas",
+  "description": "Aplikasi monitoring stok dan distribusi barang Gigamas",
+  "start_url": "/dashboard",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#f97316",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/static/img/logo_gigamas.png",
+      "sizes":"1024x1024",
+      "type": "image/png"
+    },
+    {
+      "src": "/static/img/logo_gigamas.png",
+      "sizes": "1024x1024",
+      "type": "image/png"
+    }
+  ]
+}

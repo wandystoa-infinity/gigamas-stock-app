@@ -1,6 +1,9 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+    <meta name="theme-color" content="#f97316">
+
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Gigamas{% endblock %}</title>
@@ -678,6 +681,18 @@
 </script>
 
 {% block extra_js %}{% endblock %}
-
+<script>
+if ("serviceWorker" in navigator) {
+    window.addEventListener("load", function () {
+        navigator.serviceWorker.register("/service-worker.js")
+            .then(function () {
+                console.log("Gigamas PWA service worker aktif");
+            })
+            .catch(function (error) {
+                console.log("Service worker gagal:", error);
+            });
+    });
+}
+</script>
 </body>
 </html>
