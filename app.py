@@ -8,6 +8,7 @@ from flask import (
     abort,
     jsonify,
     send_file,
+    send_from_directory,
     make_response
 )
 
@@ -246,11 +247,36 @@ def normalize_whatsapp_number(nomor):
         return None
 
     nomor = nomor.replace(" ", "").replace("-", "").replace("+", "")
+    nomor = re.sub(r"[^0-9]", "", nomor)
 
     if nomor.startswith("0"):
         nomor = "62" + nomor[1:]
 
+    if not nomor.startswith("62"):
+        nomor = "62" + nomor
+
     return nomor
+
+
+def validate_whatsapp_number(nomor, wajib=False):
+    if wajib and not nomor:
+        flash("Nomor WhatsApp wajib diisi jika user menerima alert.", "danger")
+        return False
+
+    if nomor:
+        if not nomor.isdigit():
+            flash("Nomor WhatsApp hanya boleh berisi angka.", "danger")
+            return False
+
+        if not nomor.startswith("62"):
+            flash("Nomor WhatsApp harus menggunakan format Indonesia 62.", "danger")
+            return False
+
+        if len(nomor) < 10 or len(nomor) > 15:
+            flash("Nomor WhatsApp tidak valid. Gunakan format seperti 628123456789.", "danger")
+            return False
+
+    return True
 
 
 def duplicate_exists(model, column, value, exclude_id=None):
@@ -309,7 +335,6 @@ def kirim_whatsapp_asli(nomor_tujuan, pesan):
 
     except Exception as e:
         print("ERROR WHATSAPP:", e)
-        return False, str(e)
         return False, str(e)
 
 
@@ -592,7 +617,7 @@ def dashboard():
 @app.route("/barang")
 @login_required
 def barang():
-    data_barang = Barang.query.order_by(Barang.nama_barang.asc()).all()
+    data_barang = Barang.query.filter_by(is_active=True).order_by(Barang.nama_barang.asc()).all()
     return render_template("barang.html", data_barang=data_barang)
 
 
@@ -704,7 +729,7 @@ def hapus_barang(id):
 @app.route("/supplier")
 @login_required
 def supplier():
-    data_supplier = Supplier.query.order_by(Supplier.nama_supplier.asc()).all()
+    data_supplier = Supplier.query.filter_by(is_active=True).order_by(Supplier.nama_supplier.asc()).all()
     return render_template("supplier.html", data_supplier=data_supplier)
 
 
@@ -717,6 +742,18 @@ def tambah_supplier():
     alamat = clean_text(request.form.get("alamat"))
 
     if not validate_required(nama_supplier, "Nama supplier"):
+        return redirect(url_for("supplier"))
+
+    if len(nama_supplier) < 3:
+        flash("Nama supplier minimal 3 karakter.", "danger")
+        return redirect(url_for("supplier"))
+
+    if kontak and len(kontak) > 30:
+        flash("Kontak supplier maksimal 30 karakter.", "danger")
+        return redirect(url_for("supplier"))
+
+    if alamat and len(alamat) > 200:
+        flash("Alamat supplier maksimal 200 karakter.", "danger")
         return redirect(url_for("supplier"))
 
     if duplicate_exists(Supplier, Supplier.nama_supplier, nama_supplier):
@@ -748,6 +785,18 @@ def edit_supplier(id):
     alamat = clean_text(request.form.get("alamat"))
 
     if not validate_required(nama_supplier, "Nama supplier"):
+        return redirect(url_for("supplier"))
+
+    if len(nama_supplier) < 3:
+        flash("Nama supplier minimal 3 karakter.", "danger")
+        return redirect(url_for("supplier"))
+
+    if kontak and len(kontak) > 30:
+        flash("Kontak supplier maksimal 30 karakter.", "danger")
+        return redirect(url_for("supplier"))
+
+    if alamat and len(alamat) > 200:
+        flash("Alamat supplier maksimal 200 karakter.", "danger")
         return redirect(url_for("supplier"))
 
     if duplicate_exists(Supplier, Supplier.nama_supplier, nama_supplier, exclude_id=id):
@@ -784,7 +833,7 @@ def hapus_supplier(id):
 @login_required
 @role_required(ROLE_SUPER_ADMIN)
 def cabang():
-    data_cabang = Cabang.query.order_by(Cabang.nama_cabang.asc()).all()
+    data_cabang = Cabang.query.filter_by(is_active=True).order_by(Cabang.nama_cabang.asc()).all()
     return render_template("cabang.html", data_cabang=data_cabang)
 
 
@@ -797,6 +846,18 @@ def tambah_cabang():
     kontak = clean_text(request.form.get("kontak"))
 
     if not validate_required(nama_cabang, "Nama cabang"):
+        return redirect(url_for("cabang"))
+
+    if len(nama_cabang) < 3:
+        flash("Nama cabang minimal 3 karakter.", "danger")
+        return redirect(url_for("cabang"))
+
+    if alamat and len(alamat) > 200:
+        flash("Alamat cabang maksimal 200 karakter.", "danger")
+        return redirect(url_for("cabang"))
+
+    if kontak and len(kontak) > 30:
+        flash("Kontak cabang maksimal 30 karakter.", "danger")
         return redirect(url_for("cabang"))
 
     if duplicate_exists(Cabang, Cabang.nama_cabang, nama_cabang):
@@ -828,6 +889,18 @@ def edit_cabang(id):
     kontak = clean_text(request.form.get("kontak"))
 
     if not validate_required(nama_cabang, "Nama cabang"):
+        return redirect(url_for("cabang"))
+
+    if len(nama_cabang) < 3:
+        flash("Nama cabang minimal 3 karakter.", "danger")
+        return redirect(url_for("cabang"))
+
+    if alamat and len(alamat) > 200:
+        flash("Alamat cabang maksimal 200 karakter.", "danger")
+        return redirect(url_for("cabang"))
+
+    if kontak and len(kontak) > 30:
+        flash("Kontak cabang maksimal 30 karakter.", "danger")
         return redirect(url_for("cabang"))
 
     if duplicate_exists(Cabang, Cabang.nama_cabang, nama_cabang, exclude_id=id):
@@ -1611,10 +1684,16 @@ def tambah_user():
     nomor_whatsapp = format_nomor_whatsapp(request.form.get("nomor_whatsapp"))
     menerima_alert = True if request.form.get("menerima_alert") == "on" else False
 
+    if not validate_whatsapp_number(nomor_whatsapp, wajib=menerima_alert):
+        return redirect(url_for("users"))
+
     if not validate_required(username, "Username"):
         return redirect(url_for("users"))
 
     if not validate_required(password, "Password"):
+        return redirect(url_for("users"))
+    if len(password) < 6:
+        flash("Password minimal 6 karakter.", "danger")
         return redirect(url_for("users"))
 
     if not validate_required(nama_lengkap, "Nama lengkap"):
@@ -1705,14 +1784,25 @@ def edit_user(id):
 
         user_data.cabang_id = cabang_id
 
-    user_data.nomor_whatsapp = format_nomor_whatsapp(
-        request.form.get("nomor_whatsapp")
+    nomor_whatsapp = format_nomor_whatsapp(
+    request.form.get("nomor_whatsapp")
     )
 
-    user_data.menerima_alert = True if request.form.get("menerima_alert") == "on" else False
+    menerima_alert = True if request.form.get("menerima_alert") == "on" else False
+
+    if not validate_whatsapp_number(nomor_whatsapp, wajib=menerima_alert):
+        return redirect(url_for("users"))
+
+    user_data.nomor_whatsapp = nomor_whatsapp
+    user_data.menerima_alert = menerima_alert   
 
     password_baru = request.form.get("password")
+
     if password_baru:
+        if len(password_baru) < 6:
+            flash("Password minimal 6 karakter.", "danger")
+            return redirect(url_for("users"))
+
         user_data.set_password(password_baru)
 
     db.session.commit()
@@ -1869,14 +1959,26 @@ def api_dashboard_chart():
 
     return jsonify(list(result.values()))
 
+@app.route("/manifest.json")
+def manifest():
+    return send_from_directory("static", "manifest.json")
+
+
 @app.route("/service-worker.js")
 def service_worker():
     response = make_response(
-        send_file("service-worker.js")
+        send_from_directory(
+            "static",
+            "service-worker.js",
+            mimetype="application/javascript"
+        )
     )
-    response.headers["Content-Type"] = "application/javascript"
     response.headers["Service-Worker-Allowed"] = "/"
     return response
+
+@app.route("/offline")
+def offline():
+    return render_template("offline.html")
 # =========================================================
 # ERROR HANDLER
 # =========================================================
